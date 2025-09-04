@@ -1,0 +1,52 @@
+/* Shared site styles for WeBuild - complements Bootstrap */
+:root{
+  --brand-color:#111;
+  --muted:#ebeaea;
+  --accent:#1b3fe6;
+  --border:#dcdcdc;
+  --sidebar-border:#ddd;
+}
+html,body{height:100%;}
+body{font-family: 'Times New Roman', serif; background:#fff;color:var(--brand-color)}
+.app-shell{display:flex;min-height:100vh}
+
+/* Sidebar */
+.sidebar{width:220px;background:var(--muted);padding:20px;border-right:1px solid var(--sidebar-border)}
+.sidebar .profile{ text-align:center;margin-bottom:20px }
+.sidebar .profile .avatar{width:80px;height:80px;border-radius:50%;background:#ccc;margin:0 auto 8px}
+.sidebar .role{font-size:15px}
+.sidebar .nav-link{color:var(--brand-color);padding:12px 8px;display:block;text-decoration:none}
+.sidebar .nav-link:hover{background:#f7f7f7}
+
+/* Header / Brand */
+.brand{font-family:Georgia,serif;font-size:28px;margin-bottom:6px}
+.page-title{text-align:center;font-size:34px;margin-top:6px;margin-bottom:14px}
+
+/* Cards */
+.card-warehouse{border-radius:8px;border:1px solid var(--border);padding:18px;background:#fff}
+.stat-card{border-radius:16px;border:1px solid var(--border);padding:28px;text-align:center}
+
+/* Inventory table */
+.controls{display:flex;gap:12px;justify-content:center;margin-bottom:12px}
+.table thead th{border-bottom:2px solid #ddd}
+.status-badge{padding:6px 10px;border-radius:6px;color:#fff;font-weight:600}
+.status-low{background:#ff7a4a}
+.status-out{background:#c94b3f}
+.status-in{background:#27ae60}
+
+.add-btn{background:#1e0b0b;color:#fff;border-radius:18px;padding:10px 16px;border:none}
+
+/* Responsive tweaks */
+@media (max-width:900px){.sidebar{display:none}.warehouses{flex-direction:column}}
+
+/* Utility */
+.muted-small{color:#666;font-size:13px}
+
+/* Small enhancements for inventory layout from mockup */
+.inventory-search{border-radius:20px;padding:10px 14px}
+
+/* Table alternating rows like mockup */
+tbody tr:nth-child(even){background:#f3f3f3}
+
+/* Make buttons visually subtle */
+.btn-icon{background:transparent;border:none;font-size:16px}

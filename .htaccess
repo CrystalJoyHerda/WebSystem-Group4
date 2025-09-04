@@ -1,0 +1,10 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Change this to match your project folder name
+    RewriteBase /WEBSYSTEM-Group4/
+
+    # If the request is not already pointing to /public, redirect it there
+    RewriteCond %{REQUEST_URI} !^/WEBSYSTEM-Group4/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

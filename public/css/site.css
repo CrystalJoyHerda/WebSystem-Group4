@@ -26,27 +26,5 @@ body{font-family: 'Times New Roman', serif; background:#fff;color:var(--brand-co
 .card-warehouse{border-radius:8px;border:1px solid var(--border);padding:18px;background:#fff}
 .stat-card{border-radius:16px;border:1px solid var(--border);padding:28px;text-align:center}
 
-/* Inventory table */
-.controls{display:flex;gap:12px;justify-content:center;margin-bottom:12px}
-.table thead th{border-bottom:2px solid #ddd}
-.status-badge{padding:6px 10px;border-radius:6px;color:#fff;font-weight:600}
-.status-low{background:#ff7a4a}
-.status-out{background:#c94b3f}
-.status-in{background:#27ae60}
-
-.add-btn{background:#1e0b0b;color:#fff;border-radius:18px;padding:10px 16px;border:none}
-
-/* Responsive tweaks */
-@media (max-width:900px){.sidebar{display:none}.warehouses{flex-direction:column}}
-
 /* Utility */
 .muted-small{color:#666;font-size:13px}
-
-/* Small enhancements for inventory layout from mockup */
-.inventory-search{border-radius:20px;padding:10px 14px}
-
-/* Table alternating rows like mockup */
-tbody tr:nth-child(even){background:#f3f3f3}
-
-/* Make buttons visually subtle */
-.btn-icon{background:transparent;border:none;font-size:16px}

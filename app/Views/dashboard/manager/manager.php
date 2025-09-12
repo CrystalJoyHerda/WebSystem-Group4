@@ -7,6 +7,7 @@
     <title>Warehouse Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?= base_url('css/site.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('css/manager.css') ?>" rel="stylesheet">
     <style>
         body { font-family: 'Times New Roman', serif; background: #fff; }
         .app-shell { display: flex; min-height: 100vh; }

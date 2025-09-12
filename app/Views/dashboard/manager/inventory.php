@@ -21,6 +21,7 @@
         .add-btn{background:#1e0b0b;color:#fff;border-radius:18px;padding:10px 16px}
     </style>
     <link href="<?= base_url('css/site.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('css/inventory.css') ?>" rel="stylesheet">
 </head>
 <body>
     <div class="app-shell">
@@ -68,8 +69,32 @@
             <div class="page-title">INVENTORY</div>
 
             <div class="controls">
-                <select class="form-select" style="width:160px"><option>Category</option></select>
-                <select class="form-select" style="width:160px"><option>Location</option></select>
+                <select class="form-select" name="category" style="width:260px">
+                    <option>All Category</option>
+                    <option>Building Materials</option>
+                    <option>Lumber &amp; Wood Products</option>
+                    <option>Steel &amp; Metal Products</option>
+                    <option>Electrical Supplies</option>
+                    <option>Plumbing Supplies</option>
+                    <option>Paints &amp; Finishes</option>
+                    <option>Tools &amp; Equipment</option>
+                    <option>Safety Gear</option>
+                    <option>Fasteners &amp; Hardware</option>
+                    <option>Roofing Materials</option>
+                    <option>Flooring Materials</option>
+                    <option>Doors &amp; Windows</option>
+                    <option>Insulation Materials</option>
+                </select>
+                <select class="form-select" name="location" style="width:160px">
+                    <option value="">All Location</option>
+                    <option>A</option>
+                    <option>B</option>
+                    <option>C</option>
+                    <option>D</option>
+                    <option>E</option>
+                    <option>F</option>
+                    <option>G</option>
+                </select>
                 <div style="flex:1;max-width:420px">
                     <input class="form-control" placeholder="" />
                 </div>
@@ -159,11 +184,34 @@
 
                           <div class="col-md-4">
                               <label class="form-label">Category</label>
-                              <input name="category" class="form-control" />
+                              <select name="category" class="form-select">
+                                  <option>Building Materials</option>
+                                  <option>Lumber &amp; Wood Products</option>
+                                  <option>Steel &amp; Metal Products</option>
+                                  <option>Electrical Supplies</option>
+                                  <option>Plumbing Supplies</option>
+                                  <option>Paints &amp; Finishes</option>
+                                  <option>Tools &amp; Equipment</option>
+                                  <option>Safety Gear</option>
+                                  <option>Fasteners &amp; Hardware</option>
+                                  <option>Roofing Materials</option>
+                                  <option>Flooring Materials</option>
+                                  <option>Doors &amp; Windows</option>
+                                  <option>Insulation Materials</option>
+                              </select>
                           </div>
                           <div class="col-md-4">
                               <label class="form-label">Location</label>
-                              <input name="location" class="form-control" />
+                              <select name="location" class="form-select">
+                                  <option value="">Location</option>
+                                  <option>A</option>
+                                  <option>B</option>
+                                  <option>C</option>
+                                  <option>D</option>
+                                  <option>E</option>
+                                  <option>F</option>
+                                  <option>G</option>
+                              </select>
                           </div>
                           <div class="col-md-4">
                               <label class="form-label">Quantity</label>
@@ -236,11 +284,34 @@
 
                             <div class="col-md-4">
                                 <label class="form-label">Category</label>
-                                <input name="category" id="edit-category" class="form-control" />
+                                <select name="category" id="edit-category" class="form-select">
+                                    <option>Building Materials</option>
+                                    <option>Lumber &amp; Wood Products</option>
+                                    <option>Steel &amp; Metal Products</option>
+                                    <option>Electrical Supplies</option>
+                                    <option>Plumbing Supplies</option>
+                                    <option>Paints &amp; Finishes</option>
+                                    <option>Tools &amp; Equipment</option>
+                                    <option>Safety Gear</option>
+                                    <option>Fasteners &amp; Hardware</option>
+                                    <option>Roofing Materials</option>
+                                    <option>Flooring Materials</option>
+                                    <option>Doors &amp; Windows</option>
+                                    <option>Insulation Materials</option>
+                                </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Location</label>
-                                <input name="location" id="edit-location" class="form-control" />
+                                <select name="location" id="edit-location" class="form-select">
+                                    <option value="">Location</option>
+                                    <option>A</option>
+                                    <option>B</option>
+                                    <option>C</option>
+                                    <option>D</option>
+                                    <option>E</option>
+                                    <option>F</option>
+                                    <option>G</option>
+                                </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Quantity</label>
@@ -276,5 +347,6 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="<?= base_url('js/site.js') ?>"></script>
+    <script src="<?= base_url('js/inventory.js') ?>"></script>
 </body>
 </html>

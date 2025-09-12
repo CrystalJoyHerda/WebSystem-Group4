@@ -14,7 +14,8 @@ class Inventory extends BaseController
         $model = new InventoryModel();
         $items = $model->orderBy('id', 'ASC')->findAll();
 
-        return view('pages/inventory', ['items' => $items]);
+        // Updated path to new location
+        return view('dashboard/manager/inventory', ['items' => $items]);
     }
 
     public function create()

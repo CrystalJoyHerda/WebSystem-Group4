@@ -20,14 +20,16 @@ class Dashboard extends Controller
             return redirect()->to('/dashboard/staff');
         }
 
-        return view('dashboard/manager');
+        // Default fallback
+        return view('dashboard/manager/manager');
     }
+
     public function manager()
     {
         if (session('role') !== 'manager') {
             return redirect()->to('/login');
         }
-        echo view('dashboard/manager');
+        echo view('dashboard/manager/manager');
     }
 
     public function staff()
@@ -35,6 +37,6 @@ class Dashboard extends Controller
         if (session('role') !== 'staff') {
             return redirect()->to('/login');
         }
-        echo view('dashboard/staff');
+        echo view('dashboard/staff/staff');
     }
 }

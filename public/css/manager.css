@@ -1,0 +1,2 @@
+/* Manager dashboard page specific styles */
+@media (max-width:900px){.sidebar{display:none}.warehouses{flex-direction:column}}

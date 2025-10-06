@@ -82,7 +82,7 @@ class Auth extends Controller
                         'isLoggedIn' => true
                     ]);
 
-                    session()->setFlashdata('success', 'Welcome back, ' . $user['name'] . '!');
+                    session()->setFlashdata('success', value: 'Welcome back, ' . $user['name'] . '!');
                     // Redirect based on role
                     if ($user['role'] === 'manager') {
                         return redirect()->to(base_url('dashboard/manager'));

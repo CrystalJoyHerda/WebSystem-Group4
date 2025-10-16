@@ -40,6 +40,9 @@ $routes->post('inventory/create', 'Inventory::create');
 $routes->post('inventory/delete/(:num)', 'Inventory::delete/$1');
 // Update an inventory item
 $routes->post('inventory/update/(:num)', 'Inventory::update/$1');
+$routes->get('dashboard/manager/stockmovement', function () {
+    return view('dashboard/manager/stockmovement');
+});
 
 /*
  * --------------------------------------------------------------------

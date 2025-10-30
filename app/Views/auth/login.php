@@ -19,6 +19,9 @@
         <?php if (session()->getFlashdata('error')): ?>
             <div class="error"><?= esc(session()->getFlashdata('error')) ?></div>
         <?php endif; ?>
+          <?php if (session()->getFlashdata('info')): ?>
+            <div class="error"><?= esc(session()->getFlashdata('info')) ?></div>
+        <?php endif; ?>
         <?php if (session()->getFlashdata('success')): ?>
             <div class="text-success text-center mb-3"><?= esc(session()->getFlashdata('success')) ?></div>
         <?php endif; ?>

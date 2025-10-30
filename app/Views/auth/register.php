@@ -20,6 +20,9 @@
         <?php if (isset($validation)): ?>
             <div class="alert alert-danger"><?= $validation->listErrors() ?></div>
         <?php endif; ?>
+            <?php if (session()->getFlashdata('info')): ?>
+            <div class="error"><?= esc(session()->getFlashdata('info')) ?></div>
+        <?php endif; ?>
 
         <form method="post" action="<?= site_url('register') ?>">
             <div class="mb-3">

@@ -19,12 +19,42 @@ class Auth extends Controller
         helper(['form']);
         $data = [];
 
+        if(session()->get('isLoggedIn')) {
+             session()->setFlashdata('info', 'You are already logged in.');
+            return redirect()->to(base_url('dashboard'));
+        }
+
         if ($this->request->is('post')) {
             $rules = [
-                'name' => 'required|min_length[3]|max_length[100]',
-                'email' => 'required|valid_email|is_unique[users.email]',
-                'password' => 'required|min_length[6]|max_length[255]',
-                'password_confirm' => 'matches[password]'
+               'name' => [
+                    'label'  => 'Full Name',
+                    'rules'  => 'required|min_length[3]|max_length[50]|regex_match[/^[A-Za-z\s]+$/]', // Name must be required and match regex
+                    'errors' => [
+                        'regex_match' => 'The {field} may only contain letters and spaces.' // Custom error message for regex match
+                    ]
+                ],
+                'email' => [
+                    'label'  => 'Email Address',
+                    'rules'  => 'required|valid_email|is_unique[users.email]|regex_match[/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/]', // Email must be valid and unique
+                    'errors' => [
+                        'regex_match' => 'The {field} contains invalid characters.', // Custom error message for regex match
+                        'is_unique'   => 'That email is already registered.' // Custom error message for unique check
+                    ]
+                ],
+                'password' => [
+                    'label'  => 'Password',
+                    'rules'  => 'required|min_length[8]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
+                    'errors' => [
+                        'regex_match' => 'The {field} must not contain the symbols * or ".'
+                    ]
+                ],
+                'password_confirm' => [
+                    'label'  => 'Confirm Password',
+                    'rules'  => 'required|min_length[8]|matches[password]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
+                    'errors' => [
+                        'regex_match' => 'The {field} must not contain the symbols * or ".'
+                    ]
+                ],
             ];
 
             if ($this->validate($rules)) {
@@ -58,10 +88,28 @@ class Auth extends Controller
         helper(['form']);
         $data = [];
 
+         if(session()->get('isLoggedIn')) {
+            return redirect()->to(base_url('dashboard'));
+
+        }
+
         if ($this->request->is('post')) {
             $rules = [
-                'email' => 'required|valid_email',
-                'password' => 'required|min_length[6]|max_length[255]'
+               'email' => [
+                    'label'  => 'Email Address',
+                    'rules'  => 'required|valid_email|regex_match[/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/]', // Email must be valid and unique
+                    'errors' => [
+                        'regex_match' => 'The {field} contains invalid characters.', // Custom error message for regex match
+                        'is_unique'   => 'That email is already registered.' // Custom error message for unique check
+                    ]
+                ],
+               'password' => [
+                    'label'  => 'Password',
+                    'rules'  => 'required|min_length[8]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
+                    'errors' => [
+                        'regex_match' => 'The {field} must not contain the symbols * or ".'
+                    ]
+                ],
             ];
 
             if ($this->validate($rules)) {
@@ -82,7 +130,7 @@ class Auth extends Controller
                         'isLoggedIn' => true
                     ]);
 
-                    session()->setFlashdata('success', 'Welcome back, ' . $user['name'] . '!');
+                    session()->setFlashdata('success', value: 'Welcome back, ' . $user['name'] . '!');
                     // Redirect based on role
                     if ($user['role'] === 'manager') {
                         return redirect()->to(base_url('dashboard/manager'));

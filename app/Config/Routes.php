@@ -44,6 +44,20 @@ $routes->get('dashboard/manager/stockmovement', function () {
     return view('dashboard/manager/stockmovement');
 });
 
+$routes->get('dashboard/manager/workforcemanagement', function () {
+    return view('dashboard/manager/workforcemanagement');
+});
+
+$routes->get('dashboard/manager/workforce', 'WorkforceController::index');
+$routes->get('api/workforce', 'WorkforceController::listUsers');
+$routes->post('api/workforce', 'WorkforceController::create');
+$routes->put('api/workforce/(:num)', 'WorkforceController::update/$1');
+$routes->delete('api/workforce/(:num)', 'WorkforceController::delete/$1');
+
+$routes->get('dashboard/staff/barcode', function () {
+    return view('dashboard/staff/barcodescan');
+});
+
 /*
  * --------------------------------------------------------------------
  * Additional Routing

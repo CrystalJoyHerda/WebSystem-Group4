@@ -30,7 +30,7 @@ class CreateUsersTable extends Migration
         ],
         'role' => [
             'type' => 'ENUM',
-            'constraint' => ['manager','staff'],
+            'constraint' => ['manager','staff','inventory auditor',' procurement officer','accounts payable','accounts receivable','IT administrator','topmanagement'],
             'default' => 'staff',
         ],
         'created_at' => [

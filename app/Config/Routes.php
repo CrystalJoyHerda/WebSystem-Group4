@@ -28,6 +28,8 @@ $routes->get('/', 'Home::index');
 $routes->match(['get', 'post'], 'login', 'Auth::login');
 $routes->get('logout', 'Auth::logout');
 $routes->match(['get', 'post'], 'register', 'Auth::register');
+// Generic dashboard route — redirects to manager or staff dashboard based on session
+$routes->get('dashboard', 'Dashboard::index');
 $routes->get('dashboard/manager', 'Dashboard::manager');
 $routes->get('dashboard/staff', 'Dashboard::staff');
 $routes->get('debug/session', 'Debug::session');

@@ -72,9 +72,14 @@
           <div class="mb-2">
               <label class="form-label small">Role</label>
               <select id="userRole" class="form-select form-select-sm">
-                  <option value="staff">Staff</option>
                   <option value="manager">Manager</option>
-                  <option value="admin">Admin</option>
+                  <option value="staff">Staff</option>
+                  <option value="inventory_auditor">Inventory Auditor</option>
+                  <option value="procurement_officer">Procurement Officer</option>
+                  <option value="accounts_payable">Accounts Payable</option>
+                  <option value="accounts_receivable">Accounts Receivable</option>
+                  <option value="it_administrator">IT Administrator</option>
+                  <option value="topmanagement">Top Management</option>
               </select>
           </div>
 
@@ -147,7 +152,7 @@
                 <td>${u.id}</td>
                 <td>${escapeHtml(u.name)}</td>
                 <td>${escapeHtml(u.email)}</td>
-                <td class="text-capitalize">${escapeHtml(u.role)}</td>
+                <td>${escapeHtml(prettyRole(u.role) || 'Not set')}</td>
                 <td class="actions">
                     <div class="d-flex gap-2">
                         <button class="btn btn-sm btn-outline-primary btn-edit" data-id="${u.id}">Edit</button>
@@ -193,7 +198,17 @@
         document.getElementById('userId').value = u.id;
         document.getElementById('userName').value = u.name;
         document.getElementById('userEmail').value = u.email;
-        document.getElementById('userRole').value = u.role;
+        // If stored role is falsy or doesn't match any option, normalize DB label to UI key
+        const roleSelect = document.getElementById('userRole');
+        let stored = u.role || '';
+        // normalize: trim, lowercase, spaces -> underscores
+        let normalized = String(stored).trim().toLowerCase().replace(/\s+/g, '_');
+        // if the select has this value, use it; otherwise default to 'staff'
+        if (Array.from(roleSelect.options).some(o => o.value === normalized)) {
+            roleSelect.value = normalized;
+        } else {
+            roleSelect.value = 'staff';
+        }
         const pwd = document.getElementById('userPassword');
         pwd.value = '';
         pwd.required = false;                    // optional for edit
@@ -207,7 +222,9 @@
         const idVal = document.getElementById('userId').value;
         const name = document.getElementById('userName').value.trim();
         const email = document.getElementById('userEmail').value.trim();
-        const role = document.getElementById('userRole').value;
+        let role = document.getElementById('userRole').value;
+        // ensure a valid role is sent
+        if (!role) role = 'staff';
         const password = document.getElementById('userPassword').value;
 
         if (!name || !email) { alert('Name and email are required.'); return; }
@@ -265,6 +282,27 @@
     function escapeHtml(s){
         if (!s) return '';
         return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // Convert stored role keys or DB labels into human friendly labels
+    function prettyRole(role) {
+        if (!role) return '';
+        // normalize stored form to a key: trim, lowercase, spaces -> underscores
+        const normalized = String(role).trim().toLowerCase().replace(/\s+/g, '_');
+        const map = {
+            'manager': 'Manager',
+            'staff': 'Staff',
+            'inventory_auditor': 'Inventory Auditor',
+            'procurement_officer': 'Procurement Officer',
+            'accounts_payable': 'Accounts Payable',
+            'accounts_receivable': 'Accounts Receivable',
+            'it_administrator': 'IT Administrator',
+            'topmanagement': 'Top Management',
+            'admin': 'Admin'
+        };
+        if (map[normalized]) return map[normalized];
+        // fallback: title-case the trimmed original string
+        return String(role).trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     }
 })();
 </script>

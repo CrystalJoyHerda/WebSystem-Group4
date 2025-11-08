@@ -51,18 +51,7 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
 </head>
 <body>
 <div class="app-shell">
-    <aside class="sidebar">
-        <div class="profile text-center mb-3">
-            <div style="width:80px;height:80px;border-radius:50%;background:#ccc;margin:0 auto 8px"></div>
-            <div style="font-size:14px">Warehouse Staff</div>
-            <div style="font-size:12px;color:#666">Role ▼</div>
-        </div>
-        <nav class="nav flex-column">
-            <a class="nav-link" href="<?= site_url('dashboard/staff') ?>">Dashboard</a>
-            <a class="nav-link active" href="<?= site_url('dashboard/staff/barcode') ?>">Barcode Scanning</a>
-            <a class="nav-link" href="<?= site_url('dashboard/staff/stock') ?>">Stock Movements</a>
-        </nav>
-    </aside>
+    <?= view('partials/sidebar') ?>
 
     <main class="main">
         <div style="text-align:right;margin-bottom:20px">

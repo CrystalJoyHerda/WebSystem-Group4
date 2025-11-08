@@ -18,18 +18,7 @@
 </head>
 <body>
 <div class="app-shell">
-    <aside class="sidebar">
-        <div class="profile text-center mb-3">
-            <div style="width:80px;height:80px;border-radius:50%;background:#ccc;margin:0 auto 8px"></div>
-            <div><?= esc($role) ?></div>
-        </div>
-        <nav class="nav flex-column">
-            <a class="nav-link" href="<?= site_url('dashboard/manager') ?>">Dashboard</a>
-            <a class="nav-link" href="<?= site_url('inventory') ?>">Inventory</a>
-            <a class="nav-link" href="<?= site_url('dashboard/manager/stockmovement') ?>">Stock Movements</a>
-            <a class="nav-link active" href="<?= site_url('dashboard/manager/workforce') ?>">Workforce Management</a>
-        </nav>
-    </aside>
+    <?= view('partials/sidebar') ?>
 
     <main class="main">
         <div class="d-flex align-items-center justify-content-between mb-3">

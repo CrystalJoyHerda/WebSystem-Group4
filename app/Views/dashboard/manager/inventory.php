@@ -46,38 +46,7 @@
 </head>
 <body>
     <div class="app-shell">
-        <aside class="sidebar">
-            <?php
-            // Determine a friendly role label from session
-            $roleLabel = 'Guest';
-            if (function_exists('session')) {
-                $sess = session();
-                if ($sess->has('role')) {
-                    $r = $sess->get('role');
-                    if ($r === 'manager') {
-                        $roleLabel = 'Warehouse Manager';
-                    } elseif ($r === 'staff') {
-                        $roleLabel = 'Warehouse Staff';
-                    } else {
-                        $roleLabel = ucfirst($r);
-                    }
-                }
-            }
-            ?>
-            <div class="profile">
-                <div style="width:80px;height:80px;border-radius:50%;background:#ccc;margin:0 auto 8px"></div>
-                <div><?= esc($roleLabel) ?></div>
-            </div>
-            <nav>
-                <a class="nav-link" href="<?= site_url('dashboard/manager') ?>">Dashboard</a>
-                <a class="nav-link" href="<?= site_url('inventory') ?>">Inventory</a>
-                <a class="nav-link" href="<?= site_url('dashboard/manager/stockmovement') ?>">Stock Movements</a>
-            </nav>
-        </aside>
-
-            <div style="position:fixed;left:18px;bottom:18px">
-                <a href="<?= site_url('logout') ?>" class="btn btn-sm btn-outline-dark">Logout</a>
-            </div>
+        <?= view('partials/sidebar') ?>
 
         <main style="flex:1;padding:20px 36px">
             <?php if (session()->getFlashdata('success')): ?>

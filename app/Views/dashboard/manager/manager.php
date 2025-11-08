@@ -6,14 +6,11 @@
     <title>Warehouse Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?= base_url('css/site.css') ?>" rel="stylesheet">
-    <link href="<?= base_url('css/manager.css') ?>" rel="stylesheet">
     <style>
         body { font-family: 'Times New Roman', serif; background: #fff; }
         .app-shell { display: flex; min-height: 100vh; }
-    .sidebar { width: 220px; background: #ebeaea; padding: 20px; border-right: 1px solid #ddd; }
-    .sidebar .profile { text-align: center; margin-bottom: 20px; }
-    .sidebar .nav-link { color: #000; padding: 12px 8px; display:block; }
-        .main { flex: 1; padding: 24px 32px; }
+        /* content leaves room for the fixed sidebar (220px) */
+        .main { flex: 1; padding: 24px 32px; margin-left: 220px; }
         .header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 18px; }
         .brand { font-family: 'Georgia', serif; font-size: 28px; }
         .page-title { text-align:center; font-size: 34px; margin-top: 6px; margin-bottom: 14px; }
@@ -24,44 +21,12 @@
         /* clickable stat card link */
         .stat-link { display:block; color:inherit; text-decoration:none; }
         .stat-link:focus, .stat-link:hover { text-decoration:none; }
-        @media (max-width: 900px) { .warehouses { flex-direction:column; } .sidebar{display:none;} }
+        @media (max-width: 900px) { .warehouses { flex-direction:column; } .sidebar{display:none;} .main{margin-left:0;padding:16px;} }
     </style>
 </head>
 <body>
     <div class="app-shell">
-        <aside class="sidebar">
-            <?php
-            // Determine a friendly role label from session
-            $roleLabel = 'Guest';
-            if (function_exists('session')) {
-                $sess = session();
-                if ($sess->has('role')) {
-                    $r = $sess->get('role');
-                    if ($r === 'manager') {
-                        $roleLabel = 'Warehouse Manager';
-                    } elseif ($r === 'staff') {
-                        $roleLabel = 'Warehouse Staff';
-                    } else {
-                        $roleLabel = ucfirst($r);
-                    }
-                }
-            }
-            ?>
-            <div class="profile">
-                <div style="width:80px;height:80px;border-radius:50%;background:#ccc;margin:0 auto 8px"></div>
-                <div><?= esc($roleLabel) ?></div>
-            </div>
-            <nav>
-                <a class="nav-link" href="<?= site_url('dashboard/manager') ?>">Dashboard</a>
-                <a class="nav-link" href="<?= site_url('inventory') ?>">Inventory</a>
-                <a class="nav-link" href="<?= site_url('dashboard/manager/stockmovement') ?>">Stock Movements</a>
-                <a class="nav-link" href="<?= site_url('dashboard/manager/workforce') ?>">Workforce Management</a>
-            </nav>
-        </aside>
-
-            <div style="position:absolute;left:18px;bottom:18px;">
-                <a href="<?= site_url('logout') ?>" class="btn btn-sm btn-outline-dark">Logout</a>
-            </div>
+        <?= view('partials/sidebar') ?>
 
         <main class="main">
             <div class="header">

@@ -58,6 +58,21 @@ $routes->get('dashboard/staff/barcode', function () {
     return view('dashboard/staff/barcodescan');
 });
 
+// Warehouses
+$routes->get('dashboard/manager/warehouses', 'WarehouseController::index');
+$routes->get('api/warehouse/list', 'WarehouseController::list');
+$routes->post('api/warehouse/create', 'WarehouseController::create');
+
+// Transfers
+$routes->post('api/transfer/create', 'TransferController::create');
+
+// Barcode scan API
+$routes->post('api/barcode/scan', 'BarcodeController::scan');
+
+// Invoices
+$routes->get('api/invoice/list', 'InvoiceController::list');
+$routes->post('api/invoice/create', 'InvoiceController::create');
+
 /*
  * --------------------------------------------------------------------
  * Additional Routing

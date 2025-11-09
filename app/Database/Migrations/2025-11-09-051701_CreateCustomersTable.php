@@ -23,6 +23,14 @@ class CreateCustomersTable extends Migration
                 'type'       => 'VARCHAR',
                 'constraint' => 100,
             ],    
+            'taxt_id' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 50,
+            ],
+            'payment_terms' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 100,
+            ],
         ]);
 
         $this->forge->addKey('customer_id', true); // Primary key

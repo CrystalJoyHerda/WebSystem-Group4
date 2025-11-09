@@ -36,6 +36,10 @@ class CreateARInvoices extends Migration
                 'type'       => 'ENUM',
                 'constraint' => ['paid', 'unpaid', 'overdue'],
             ],
+            'customers_notes' => [
+                'type'       => 'TEXT',
+                'null'       => true,
+            ]
         ]);
 
         $this->forge->addKey('ar_invoice_id', true); // Primary key

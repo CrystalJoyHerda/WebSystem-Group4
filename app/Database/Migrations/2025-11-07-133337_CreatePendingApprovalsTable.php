@@ -8,7 +8,7 @@ class CreatePendingApprovalsTable extends Migration
 {
     public function up()
     {
-        //
+        // his Migration is observation for any changes
     }
 
     public function down()

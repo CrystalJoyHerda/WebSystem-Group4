@@ -23,6 +23,10 @@ class CreateInvoicesTable extends Migration
                 'type'       => 'VARCHAR',
                 'constraint' => 100,
             ],
+            'term' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 50,
+            ],
             'Date' => [
                 'type'       => 'DATE',
                 'null'       => false,

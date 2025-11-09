@@ -20,7 +20,6 @@ class CreateProgressTable extends Migration
                 'constraint' => 11,
                 'unsigned'   => true,
             ],
-           
         ]);
 
         $this->forge->addKey('progress_id', true); // Primary key

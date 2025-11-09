@@ -8,17 +8,32 @@ class CreateExpensesTable extends Migration
 {
     public function up()
     {
-        $this->forge->addField([
+        $this->forge->addField(fields: [
             'expense_id' => [
                 'type'           => 'INT',
                 'constraint'     => 11,
                 'unsigned'       => true,
                 'auto_increment' => true,
             ],
-            'vendor_id' => [
-                'type'       => 'INT',
-                'constraint' => 11,
-                'unsigned'   => true,
+            'expense_category' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 100,
+            ],
+            'budget' => [
+                'type'       => 'DECIMAL',
+                'constraint' => '10,2',
+            ],
+            'actual' => [
+                'type'       => 'DECIMAL',
+                'constraint' => '10,2',
+            ],
+            'variance' => [
+                'type'       => 'DECIMAL',
+                'constraint' => '10,2',
+            ],
+            'percent_budget' => [
+                'type'       => 'DECIMAL',
+                'constraint' => '5,2',
             ],
             'amount' => [
                 'type'       => 'DECIMAL',

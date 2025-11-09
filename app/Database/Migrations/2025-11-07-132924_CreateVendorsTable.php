@@ -26,6 +26,7 @@ class CreateVendorsTable extends Migration
         ]);
 
         $this->forge->addKey('vendor_id', true); // Primary key
+        $this->forge->createTable('vendors');
     }
 
     public function down()

@@ -42,6 +42,7 @@ class CreateInvoicesTable extends Migration
         ]);
 
         $this->forge->addKey('invoice_id', true); // Primary key
+        $this->forge->createTable('invoices');
     }
 
     public function down()

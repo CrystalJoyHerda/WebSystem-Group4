@@ -41,6 +41,18 @@ $routes->post('inventory/delete/(:num)', 'Inventory::delete/$1');
 // Update an inventory item
 $routes->post('inventory/update/(:num)', 'Inventory::update/$1');
 
+
+// IT Administrator Routes
+$routes->get('dashboard', 'Dashboard::admin');
+$routes->get('user-management', 'Admin::userManagement');
+$routes->get('access-control', 'Admin::accessControl');
+$routes->get('system-logs', 'Admin::systemLogs');
+$routes->get('backup-recovery', 'Admin::backupRecovery');
+$routes->get('system-configuration', 'Admin::systemConfiguration');
+$routes->get('reports', 'Admin::reports');
+$routes->get('notifications', 'Admin::notifications');
+$routes->get('profile', 'Admin::profile');
+
 /*
  * --------------------------------------------------------------------
  * Additional Routing

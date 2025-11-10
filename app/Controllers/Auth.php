@@ -43,14 +43,14 @@ class Auth extends Controller
                 ],
                 'password' => [
                     'label'  => 'Password',
-                    'rules'  => 'required|min_length[8]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
+                    'rules'  => 'required|min_length[6]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
                     'errors' => [
                         'regex_match' => 'The {field} must not contain the symbols * or ".'
                     ]
                 ],
                 'password_confirm' => [
                     'label'  => 'Confirm Password',
-                    'rules'  => 'required|min_length[8]|matches[password]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
+                    'rules'  => 'required|min_length[6]|matches[password]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
                     'errors' => [
                         'regex_match' => 'The {field} must not contain the symbols * or ".'
                     ]
@@ -105,7 +105,7 @@ class Auth extends Controller
                 ],
                'password' => [
                     'label'  => 'Password',
-                    'rules'  => 'required|min_length[8]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
+                    'rules'  => 'required|min_length[6]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
                     'errors' => [
                         'regex_match' => 'The {field} must not contain the symbols * or ".'
                     ]

@@ -48,4 +48,15 @@ class Dashboard extends Controller
         }
         echo view('dashboard/staff/staff');
     }
+
+     public function admin()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return redirect()->to('login');
+        }
+        if (session('role') !== 'admin') {
+            return redirect()->to('/login');
+        }
+        echo view('dashboard/admin/admin');
+    }
 }

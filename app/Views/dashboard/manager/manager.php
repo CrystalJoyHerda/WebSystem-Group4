@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -7,14 +6,11 @@
     <title>Warehouse Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?= base_url('css/site.css') ?>" rel="stylesheet">
-    <link href="<?= base_url('css/manager.css') ?>" rel="stylesheet">
     <style>
         body { font-family: 'Times New Roman', serif; background: #fff; }
         .app-shell { display: flex; min-height: 100vh; }
-    .sidebar { width: 220px; background: #ebeaea; padding: 20px; border-right: 1px solid #ddd; }
-    .sidebar .profile { text-align: center; margin-bottom: 20px; }
-    .sidebar .nav-link { color: #000; padding: 12px 8px; display:block; }
-        .main { flex: 1; padding: 24px 32px; }
+        /* content leaves room for the fixed sidebar (220px) */
+        .main { flex: 1; padding: 24px 32px; margin-left: 220px; }
         .header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 18px; }
         .brand { font-family: 'Georgia', serif; font-size: 28px; }
         .page-title { text-align:center; font-size: 34px; margin-top: 6px; margin-bottom: 14px; }
@@ -22,43 +18,15 @@
         .stat-card { border-radius: 16px; border:1px solid #dcdcdc; padding: 28px; text-align:center; }
         .stat-card h3 { font-size: 48px; margin:0; }
         .warehouses { display:flex; gap:16px; }
-        @media (max-width: 900px) { .warehouses { flex-direction:column; } .sidebar{display:none;} }
+        /* clickable stat card link */
+        .stat-link { display:block; color:inherit; text-decoration:none; }
+        .stat-link:focus, .stat-link:hover { text-decoration:none; }
+        @media (max-width: 900px) { .warehouses { flex-direction:column; } .sidebar{display:none;} .main{margin-left:0;padding:16px;} }
     </style>
 </head>
 <body>
     <div class="app-shell">
-        <aside class="sidebar">
-            <?php
-            // Determine a friendly role label from session
-            $roleLabel = 'Guest';
-            if (function_exists('session')) {
-                $sess = session();
-                if ($sess->has('role')) {
-                    $r = $sess->get('role');
-                    if ($r === 'manager') {
-                        $roleLabel = 'Warehouse Manager';
-                    } elseif ($r === 'staff') {
-                        $roleLabel = 'Warehouse Staff';
-                    } else {
-                        $roleLabel = ucfirst($r);
-                    }
-                }
-            }
-            ?>
-            <div class="profile">
-                <div style="width:80px;height:80px;border-radius:50%;background:#ccc;margin:0 auto 8px"></div>
-                <div><?= esc($roleLabel) ?></div>
-            </div>
-            <nav>
-                <a class="nav-link" href="<?= site_url('dashboard/manager') ?>">Dashboard</a>
-                <a class="nav-link" href="<?= site_url('inventory') ?>">Inventory</a>
-                <a class="nav-link" href="#">Stock Movements</a>
-            </nav>
-        </aside>
-
-            <div style="position:absolute;left:18px;bottom:18px;">
-                <a href="<?= site_url('logout') ?>" class="btn btn-sm btn-outline-dark">Logout</a>
-            </div>
+        <?= view('partials/sidebar') ?>
 
         <main class="main">
             <div class="header">
@@ -103,17 +71,73 @@
             </div>
 
             <div class="row g-4">
+                <?php
+// ensure $items is set — if controller didn't provide it, load from the Inventory model
+if (empty($items) || ! is_array($items)) {
+    try {
+        $inventoryModel = new \App\Models\InventoryModel();
+        $items = $inventoryModel->findAll();
+    } catch (\Throwable $e) {
+        $items = [];
+    }
+}
+
+// compute alert count robustly
+$alertCount = 0;
+foreach ($items as $it) {
+    // normalize status
+    $statusRaw = '';
+    if (! empty($it['status'])) {
+        $statusRaw = $it['status'];
+    } elseif (! empty($it['stock_status'])) {
+        $statusRaw = $it['stock_status'];
+    }
+    $status = strtolower((string) $statusRaw);
+
+    if ($status !== '' && (strpos($status, 'low') !== false || strpos($status, 'out') !== false)) {
+        $alertCount++;
+        continue;
+    }
+
+    // fallback: numeric checks (quantity vs min/reorder level)
+    $qty = isset($it['quantity']) ? (int) $it['quantity'] : null;
+    if ($qty !== null) {
+        $minLevel = null;
+        if (isset($it['min_level'])) {
+            $minLevel = (int) $it['min_level'];
+        } elseif (isset($it['reorder_level'])) {
+            $minLevel = (int) $it['reorder_level'];
+        }
+
+        if ($minLevel !== null) {
+            if ($qty <= $minLevel) {
+                $alertCount++;
+                continue;
+            }
+        } else {
+            if ($qty <= 0) {
+                $alertCount++;
+                continue;
+            }
+        }
+    }
+}
+?>
                 <div class="col-md-4">
-                    <div class="stat-card">
-                        <h6>Pending Approvals</h6>
-                        <h3>5</h3>
-                    </div>
+                    <a class="stat-link" href="<?= site_url('dashboard/manager/stockmovement') ?>">
+                        <div class="stat-card" role="button" aria-label="View pending approvals">
+                            <h6>Pending Approvals</h6>
+                            <h3>5</h3>
+                        </div>
+                    </a>
                 </div>
                 <div class="col-md-4">
-                    <div class="stat-card">
-                        <h6>Alert Stocks</h6>
-                        <h3>3</h3>
-                    </div>
+                    <a class="stat-link" href="<?= site_url('inventory') ?>?filter=alert">
+                        <div class="stat-card" role="button" aria-label="View alert stocks">
+                            <h6>Alert Stocks</h6>
+                            <h3><?= intval($alertCount) ?></h3>
+                        </div>
+                    </a>
                 </div>
             </div>
         </main>

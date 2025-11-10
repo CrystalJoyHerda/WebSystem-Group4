@@ -8,7 +8,28 @@
     <style>
         body{font-family:'Times New Roman',serif;background:#fff}
         .app-shell{display:flex;min-height:100vh}
-        .sidebar{width:220px;background:#ebeaea;padding:18px;border-right:1px solid #6b5b5b}
+        /* make sidebar fixed so it doesn't move when the page scrolls */
+        .sidebar{
+            width:220px;
+            background:#ebeaea;
+            padding:18px;
+            border-right:1px solid #6b5b5b;
+
+            position:fixed;
+            top:0;
+            left:0;
+            height:100vh;
+            overflow:auto; /* keep internal scroll if sidebar content grows */
+            z-index: 10;
+        }
+
+        /* push main content to the right of the fixed sidebar */
+        main{
+            margin-left:220px;
+            flex:1;
+            padding:20px 36px;
+        }
+
         .profile-box{background:#e9e6e6;padding:14px;border:1px solid #6b5b5b;margin-bottom:18px;text-align:center}
         .brand{font-family:'Georgia',serif;font-size:36px;padding:10px 0}
         .page-title{text-align:center;font-size:40px;letter-spacing:2px;margin-bottom:18px}
@@ -25,38 +46,7 @@
 </head>
 <body>
     <div class="app-shell">
-        <aside class="sidebar">
-            <?php
-            // Determine a friendly role label from session
-            $roleLabel = 'Guest';
-            if (function_exists('session')) {
-                $sess = session();
-                if ($sess->has('role')) {
-                    $r = $sess->get('role');
-                    if ($r === 'manager') {
-                        $roleLabel = 'Warehouse Manager';
-                    } elseif ($r === 'staff') {
-                        $roleLabel = 'Warehouse Staff';
-                    } else {
-                        $roleLabel = ucfirst($r);
-                    }
-                }
-            }
-            ?>
-            <div class="profile">
-                <div style="width:80px;height:80px;border-radius:50%;background:#ccc;margin:0 auto 8px"></div>
-                <div><?= esc($roleLabel) ?></div>
-            </div>
-            <nav>
-                <a class="nav-link" href="<?= site_url('dashboard/manager') ?>">Dashboard</a>
-                <a class="nav-link" href="<?= site_url('inventory') ?>">Inventory</a>
-                <a class="nav-link" href="#">Stock Movements</a>
-            </nav>
-        </aside>
-
-            <div style="position:fixed;left:18px;bottom:18px">
-                <a href="<?= site_url('logout') ?>" class="btn btn-sm btn-outline-dark">Logout</a>
-            </div>
+        <?= view('partials/sidebar') ?>
 
         <main style="flex:1;padding:20px 36px">
             <?php if (session()->getFlashdata('success')): ?>

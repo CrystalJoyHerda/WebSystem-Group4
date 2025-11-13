@@ -4,6 +4,7 @@ $role = $session ? $session->get('role') ?? 'guest' : 'guest';
 $roleLabel = 'Guest';
 if ($role === 'manager') $roleLabel = 'Warehouse Manager';
 elseif ($role === 'staff') $roleLabel = 'Warehouse Staff';
+elseif ($role === 'viewer') $roleLabel = 'Warehouse Viewer';
 ?>
 <style>
     /* Sidebar base layout (match manager dashboard spacing) */
@@ -42,6 +43,11 @@ elseif ($role === 'staff') $roleLabel = 'Warehouse Staff';
             <a class="nav-link" href="<?= site_url('dashboard/staff/barcode') ?>">Barcode Scanning</a>
             <a class="nav-link" href="<?= site_url('dashboard/staff/stock') ?>">Stock Movements</a>
             <a class="nav-link" href="<?= site_url('inventory') ?>">Inventory</a>
+        <?php elseif ($role === 'viewer'): ?>
+            <a class="nav-link" href="<?= site_url('dashboard/viewer') ?>">Dashboard</a>
+            <a class="nav-link" href="<?= site_url('inventory') ?>">View Inventory</a>
+            <a class="nav-link" href="<?= site_url('dashboard/manager/warehouses') ?>">View Warehouses</a>
+            <a class="nav-link" href="<?= site_url('dashboard/manager/stockmovement') ?>">View Stock Movements</a>
         <?php else: ?>
             <a class="nav-link" href="<?= site_url('dashboard') ?>">Dashboard</a>
         <?php endif; ?>

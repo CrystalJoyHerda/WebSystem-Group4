@@ -127,7 +127,7 @@ foreach ($items as $it) {
                     <a class="stat-link" href="<?= site_url('dashboard/manager/stockmovement') ?>">
                         <div class="stat-card" role="button" aria-label="View pending approvals">
                             <h6>Pending Approvals</h6>
-                            <h3>5</h3>
+                            <h3 id="pendingApprovals">5</h3>
                         </div>
                     </a>
                 </div>
@@ -135,9 +135,49 @@ foreach ($items as $it) {
                     <a class="stat-link" href="<?= site_url('inventory') ?>?filter=alert">
                         <div class="stat-card" role="button" aria-label="View alert stocks">
                             <h6>Alert Stocks</h6>
-                            <h3><?= intval($alertCount) ?></h3>
+                            <h3 id="alertStocks"><?= intval($alertCount) ?></h3>
                         </div>
                     </a>
+                </div>
+            </div>
+
+            <!-- Real-time Stock Alerts Section -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="card-title mb-0">🚨 Stock Alerts</h5>
+                                <button id="refreshAlerts" class="btn btn-sm btn-outline-primary">Refresh</button>
+                            </div>
+                            <div id="stockAlertsList">
+                                <div class="text-center py-3">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                                    <span class="ms-2">Loading stock alerts...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warehouse Status Section -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="card-title mb-0">📊 Warehouse Usage Analytics</h5>
+                                <small class="text-muted">Last updated: <span id="lastUpdated">-</span></small>
+                            </div>
+                            <div id="warehouseAnalytics">
+                                <div class="text-center py-3">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                                    <span class="ms-2">Loading analytics...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -145,5 +185,143 @@ foreach ($items as $it) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="<?= base_url('js/site.js') ?>"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStockAlerts();
+            loadWarehouseAnalytics();
+            
+            // Set up refresh button
+            document.getElementById('refreshAlerts').addEventListener('click', loadStockAlerts);
+            
+            // Auto-refresh every 2 minutes
+            setInterval(function() {
+                loadStockAlerts();
+                loadWarehouseAnalytics();
+            }, 120000);
+        });
+
+        async function loadStockAlerts() {
+            try {
+                const response = await fetch('<?= site_url('api/inventory/low-stock') ?>');
+                if (response.ok) {
+                    const alerts = await response.json();
+                    displayStockAlerts(alerts);
+                    
+                    // Update alert count in stat card
+                    document.getElementById('alertStocks').textContent = alerts.length;
+                } else {
+                    document.getElementById('stockAlertsList').innerHTML = 
+                        '<div class="alert alert-warning">Unable to load stock alerts</div>';
+                }
+            } catch (error) {
+                console.error('Error loading stock alerts:', error);
+                document.getElementById('stockAlertsList').innerHTML = 
+                    '<div class="alert alert-danger">Error loading stock alerts</div>';
+            }
+        }
+
+        function displayStockAlerts(alerts) {
+            const container = document.getElementById('stockAlertsList');
+            
+            if (alerts.length === 0) {
+                container.innerHTML = '<div class="alert alert-success">✅ All items are adequately stocked!</div>';
+                return;
+            }
+
+            const alertsHtml = alerts.slice(0, 10).map(item => {
+                const statusClass = item.quantity <= 0 ? 'danger' : 'warning';
+                const statusText = item.quantity <= 0 ? 'OUT OF STOCK' : 'LOW STOCK';
+                
+                return `
+                    <div class="alert alert-${statusClass} d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <strong>${item.name}</strong> (${item.sku || 'No SKU'})
+                            <br><small>Location: ${item.location || 'Not specified'} | Current: ${item.quantity} units</small>
+                        </div>
+                        <div>
+                            <span class="badge bg-${statusClass}">${statusText}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (alerts.length > 10) {
+                container.innerHTML = alertsHtml + 
+                    `<div class="text-center mt-2">
+                        <small class="text-muted">... and ${alerts.length - 10} more items</small>
+                        <br><a href="<?= site_url('inventory') ?>?filter=low" class="btn btn-sm btn-outline-primary mt-2">View All Alerts</a>
+                    </div>`;
+            } else {
+                container.innerHTML = alertsHtml;
+            }
+        }
+
+        async function loadWarehouseAnalytics() {
+            try {
+                const response = await fetch('<?= site_url('api/warehouse/analytics') ?>');
+                if (response.ok) {
+                    const analytics = await response.json();
+                    displayWarehouseAnalytics(analytics);
+                    
+                    // Update last updated time
+                    document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+                } else {
+                    document.getElementById('warehouseAnalytics').innerHTML = 
+                        '<div class="alert alert-warning">Unable to load warehouse analytics</div>';
+                }
+            } catch (error) {
+                console.error('Error loading warehouse analytics:', error);
+                document.getElementById('warehouseAnalytics').innerHTML = 
+                    '<div class="alert alert-danger">Error loading warehouse analytics</div>';
+            }
+        }
+
+        function displayWarehouseAnalytics(analytics) {
+            const container = document.getElementById('warehouseAnalytics');
+            
+            if (!analytics || analytics.length === 0) {
+                container.innerHTML = '<div class="alert alert-info">No warehouse data available</div>';
+                return;
+            }
+
+            const analyticsHtml = analytics.map(warehouse => {
+                const totalCapacity = 10000; // This should come from warehouse configuration
+                const usagePercent = Math.min((warehouse.total_quantity / totalCapacity) * 100, 100);
+                const progressClass = usagePercent > 90 ? 'danger' : usagePercent > 70 ? 'warning' : 'success';
+                
+                return `
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">${warehouse.warehouse_name || 'Unknown Warehouse'}</h6>
+                                <div class="mb-2">
+                                    <small class="text-muted">Usage: ${usagePercent.toFixed(1)}%</small>
+                                    <div class="progress mt-1" style="height: 8px;">
+                                        <div class="progress-bar bg-${progressClass}" 
+                                             style="width: ${usagePercent}%"></div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <small>Items: <strong>${warehouse.total_items || 0}</strong></small>
+                                    </div>
+                                    <div>
+                                        <small>Stock: <strong>${warehouse.total_quantity || 0}</strong></small>
+                                    </div>
+                                </div>
+                                ${warehouse.low_stock_count > 0 ? 
+                                    `<div class="mt-2">
+                                        <span class="badge bg-warning">${warehouse.low_stock_count} Low Stock</span>
+                                    </div>` : ''
+                                }
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = `<div class="row">${analyticsHtml}</div>`;
+        }
+    </script>
 </body>
 </html>

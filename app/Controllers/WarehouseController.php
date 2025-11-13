@@ -32,4 +32,102 @@ class WarehouseController extends BaseController
         $id = $model->insert(['name' => $data['name'], 'location' => $data['location'] ?? null, 'created_at' => date('Y-m-d H:i:s')]);
         return $this->response->setJSON(['success' => true, 'id' => $id]);
     }
+
+    // Analytics endpoint for warehouse usage
+    public function getAnalytics()
+    {
+        if (! session()->get('isLoggedIn')) return $this->response->setStatusCode(401);
+        
+        $model = new WarehouseModel();
+        try {
+            $analytics = $model->getAllWithCounts();
+            return $this->response->setJSON($analytics);
+        } catch (\Exception $e) {
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'Internal server error']);
+        }
+    }
+
+    /**
+     * Seed test data for 3 warehouses to verify warehouse list and information display
+     * Access via: /warehouses/seed-test-data
+     */
+    public function seedWarehousesTestData()
+    {
+        if (! session()->get('isLoggedIn') || session('role') !== 'manager') {
+            return redirect()->to('/login');
+        }
+
+        $model = new WarehouseModel();
+        
+        // Define the 3 test warehouses
+        $testWarehouses = [
+            [
+                'name' => 'Main Warehouse',
+                'location' => 'Tagum City',
+                'capacity' => 10000,
+                'current_usage' => 3000,
+                'status' => 'Active',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ],
+            [
+                'name' => 'Warehouse A',
+                'location' => 'Panabo City',
+                'capacity' => 8000,
+                'current_usage' => 2500,
+                'status' => 'Active',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ],
+            [
+                'name' => 'Warehouse B',
+                'location' => 'Davao City',
+                'capacity' => 5000,
+                'current_usage' => 1000,
+                'status' => 'Active',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ],
+        ];
+
+        $insertedCount = 0;
+        $updatedCount = 0;
+
+        foreach ($testWarehouses as $warehouse) {
+            // Check if warehouse already exists by name
+            $existing = $model->where('name', $warehouse['name'])->first();
+            
+            if (!$existing) {
+                // Insert new warehouse
+                $model->insert($warehouse);
+                $insertedCount++;
+            } else {
+                // Update existing warehouse with new fields
+                $model->update($existing['id'], [
+                    'capacity' => $warehouse['capacity'],
+                    'current_usage' => $warehouse['current_usage'],
+                    'status' => $warehouse['status'],
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+                $updatedCount++;
+            }
+        }
+
+        // Set flash message
+        if ($insertedCount > 0 || $updatedCount > 0) {
+            $message = "Warehouse test data seeded successfully! ";
+            if ($insertedCount > 0) {
+                $message .= "Inserted: {$insertedCount} warehouses. ";
+            }
+            if ($updatedCount > 0) {
+                $message .= "Updated: {$updatedCount} warehouses.";
+            }
+            session()->setFlashdata('success', $message);
+        } else {
+            session()->setFlashdata('info', 'All test warehouses already exist with current data.');
+        }
+
+        // Redirect to warehouse list to display the data
+        return redirect()->to('/dashboard/manager/warehouses');
+    }
 }

@@ -168,47 +168,253 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         (function(){
-            // Handle accept button clicks (inbound)
+            // Sample data for demonstrations - in production this would come from backend
+            const sampleReceiptData = {
+                'PO-1234': {
+                    item_data: [{
+                        item_id: 3,
+                        item_name: 'Portland Cement 50kg',
+                        item_sku: 'CEM-50-001',
+                        quantity: 50,
+                        warehouse_id: 1,
+                        warehouse_name: 'Main Warehouse',
+                        supplier: 'Construction Materials Ltd'
+                    }]
+                },
+                'PO-1210': {
+                    item_data: [{
+                        item_id: 8,
+                        item_name: 'Exterior Paint 5L',
+                        item_sku: 'PNT-5L-004',
+                        quantity: 200,
+                        warehouse_id: 1,
+                        warehouse_name: 'Main Warehouse',
+                        supplier: 'Paint Solutions Inc'
+                    }]
+                },
+                'PO-1205': {
+                    item_data: [{
+                        item_id: 7,
+                        item_name: 'PVC Pipe 2in',
+                        item_sku: 'PLB-PVC-2',
+                        quantity: 200,
+                        warehouse_id: 1,
+                        warehouse_name: 'Main Warehouse',
+                        supplier: 'Pipe & Plumbing Co'
+                    }]
+                },
+                'SO-5678': {
+                    item_data: [{
+                        item_id: 11,
+                        item_name: 'Hex Bolts M10',
+                        item_sku: 'HB-M10-002',
+                        quantity: 100,
+                        warehouse_id: 1,
+                        warehouse_name: 'Main Warehouse',
+                        customer: 'ABC Construction Corp'
+                    }]
+                },
+                'SO-5599': {
+                    item_data: [{
+                        item_id: 6,
+                        item_name: 'Copper Wire Roll',
+                        item_sku: 'ELC-WR-01',
+                        quantity: 40,
+                        warehouse_id: 1,
+                        warehouse_name: 'Main Warehouse',
+                        customer: 'Electrical Works Ltd'
+                    }]
+                },
+                'SO-5588': {
+                    item_data: [{
+                        item_id: 4,
+                        item_name: 'Timber Plank 2x4',
+                        item_sku: 'TMR-24-003',
+                        quantity: 60,
+                        warehouse_id: 1,
+                        warehouse_name: 'Main Warehouse',
+                        customer: 'Woodwork Construction Ltd'
+                    }]
+                }
+            };
+
+            // Handle accept button clicks (inbound receipts)
             document.querySelectorAll('.accept-btn').forEach(function(btn){
-                btn.addEventListener('click', function(e){
-                    var ref = btn.getAttribute('data-ref') || '';
+                btn.addEventListener('click', async function(e){
+                    e.preventDefault();
+                    
+                    const ref = btn.getAttribute('data-ref') || '';
+                    const originalText = btn.textContent;
+                    
+                    // Update UI immediately
                     btn.disabled = true;
-                    btn.classList.remove('btn-primary');
-                    btn.classList.add('btn-success');
-                    btn.textContent = 'Accepted';
-                    var li = btn.closest('li');
-                    if(li) li.classList.add('accepted-item');
+                    btn.textContent = 'Processing...';
+                    
+                    try {
+                        // Prepare data for approval
+                        const receiptData = sampleReceiptData[ref];
+                        if (!receiptData) {
+                            throw new Error('Receipt data not found');
+                        }
 
-                    var msg = document.createElement('div');
-                    msg.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success py-1 px-2';
-                    msg.style.zIndex = 9999;
-                    msg.style.opacity = '0.95';
-                    msg.textContent = 'Accepted ' + ref;
-                    document.body.appendChild(msg);
-                    setTimeout(function(){ msg.remove(); }, 1800);
+                        // Call approval API
+                        const response = await fetch('<?= site_url('stockmovements/approveInboundReceipt') ?>', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                reference_no: ref,
+                                item_data: receiptData.item_data
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok && result.success) {
+                            // Success - update button and show message
+                            btn.classList.remove('btn-primary');
+                            btn.classList.add('btn-success');
+                            btn.textContent = 'Accepted ✓';
+                            
+                            const li = btn.closest('li');
+                            if(li) li.classList.add('accepted-item');
+
+                            showMessage('success', `${result.message}. Created ${result.tasks_count} barcode scanning task(s) for staff.`);
+                            
+                            // Load updated movement history
+                            setTimeout(loadMovementHistory, 1000);
+                            
+                        } else {
+                            throw new Error(result.error || 'Approval failed');
+                        }
+
+                    } catch (error) {
+                        console.error('Inbound approval error:', error);
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                        showMessage('danger', 'Failed to approve inbound receipt: ' + error.message);
+                    }
                 });
             });
 
-            // Handle approve button clicks (outbound)
+            // Handle approve button clicks (outbound shipments)
             document.querySelectorAll('.approve-btn').forEach(function(btn){
-                btn.addEventListener('click', function(e){
-                    var ref = btn.getAttribute('data-ref') || '';
+                btn.addEventListener('click', async function(e){
+                    e.preventDefault();
+                    
+                    const ref = btn.getAttribute('data-ref') || '';
+                    const originalText = btn.textContent;
+                    
+                    // Update UI immediately
                     btn.disabled = true;
-                    btn.classList.remove('btn-outline-success');
-                    btn.classList.add('btn-success');
-                    btn.textContent = 'Approved';
-                    var li = btn.closest('li');
-                    if(li) li.classList.add('approved-item');
+                    btn.textContent = 'Processing...';
+                    
+                    try {
+                        // Prepare data for approval
+                        const shipmentData = sampleReceiptData[ref];
+                        if (!shipmentData) {
+                            throw new Error('Shipment data not found');
+                        }
 
-                    var msg = document.createElement('div');
-                    msg.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success py-1 px-2';
-                    msg.style.zIndex = 9999;
-                    msg.style.opacity = '0.95';
-                    msg.textContent = 'Approved ' + ref;
-                    document.body.appendChild(msg);
-                    setTimeout(function(){ msg.remove(); }, 1800);
+                        // Call approval API
+                        const response = await fetch('<?= site_url('stockmovements/approveOutboundReceipt') ?>', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                reference_no: ref,
+                                item_data: shipmentData.item_data
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok && result.success) {
+                            // Success - update button and show message
+                            btn.classList.remove('btn-outline-success');
+                            btn.classList.add('btn-success');
+                            btn.textContent = 'Approved ✓';
+                            
+                            const li = btn.closest('li');
+                            if(li) li.classList.add('approved-item');
+
+                            showMessage('success', `${result.message}. Created ${result.tasks_count} barcode scanning task(s) for staff.`);
+                            
+                            // Load updated movement history
+                            setTimeout(loadMovementHistory, 1000);
+                            
+                        } else {
+                            throw new Error(result.error || 'Approval failed');
+                        }
+
+                    } catch (error) {
+                        console.error('Outbound approval error:', error);
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                        showMessage('danger', 'Failed to approve outbound shipment: ' + error.message);
+                    }
                 });
             });
+
+            // Utility function to show messages
+            function showMessage(type, message) {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${type} position-fixed bottom-0 end-0 m-3`;
+                alertDiv.style.zIndex = 9999;
+                alertDiv.style.maxWidth = '400px';
+                alertDiv.innerHTML = `
+                    <strong>${type === 'success' ? 'Success!' : 'Error!'}</strong> ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(alertDiv);
+                
+                // Auto-remove after 5 seconds
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.remove();
+                    }
+                }, 5000);
+            }
+
+            // Load movement history from API
+            async function loadMovementHistory() {
+                try {
+                    const response = await fetch('<?= site_url('stockmovements/getMovementHistory') ?>');
+                    if (response.ok) {
+                        const movements = await response.json();
+                        updateMovementHistoryTable(movements);
+                    }
+                } catch (error) {
+                    console.error('Failed to load movement history:', error);
+                }
+            }
+
+            // Update movement history table
+            function updateMovementHistoryTable(movements) {
+                const tbody = document.querySelector('.movement-list tbody');
+                if (!tbody || !movements.length) return;
+
+                tbody.innerHTML = movements.slice(0, 10).map(movement => `
+                    <tr>
+                        <td>${formatDate(movement.created_at || new Date())}</td>
+                        <td>${movement.movement_type === 'in' ? 'Inbound' : 'Outbound'}</td>
+                        <td>${movement.item_sku || 'N/A'}</td>
+                        <td class="text-end">${movement.quantity}</td>
+                        <td>${movement.order_number}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // Utility function to format date
+            function formatDate(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleDateString();
+            }
+
+            // Load initial movement history
+            document.addEventListener('DOMContentLoaded', loadMovementHistory);
         })();
     </script>
 </body>

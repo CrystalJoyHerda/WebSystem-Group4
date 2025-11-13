@@ -21,6 +21,10 @@ class Dashboard extends Controller
             return redirect()->to('/dashboard/staff');
         }
 
+        if ($role === 'viewer') {
+            return redirect()->to('/dashboard/viewer');
+        }
+
         // Default fallback
         return view('dashboard/manager/manager');
     }
@@ -47,6 +51,18 @@ class Dashboard extends Controller
             return redirect()->to('/login');
         }
         echo view('dashboard/staff/staff');
+    }
+
+    public function viewer()
+    {
+        if (! session()->get('isLoggedIn')) {
+            session()->setFlashdata('info', 'Please log in to access the dashboard.');
+            return redirect()->to('/login');
+        }
+        if (session('role') !== 'viewer') {
+            return redirect()->to('/login');
+        }
+        echo view('dashboard/viewer/viewer');
     }
 
      public function admin()

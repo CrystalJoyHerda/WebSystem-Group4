@@ -32,6 +32,7 @@ $routes->match(['get', 'post'], 'register', 'Auth::register');
 $routes->get('dashboard', 'Dashboard::index');
 $routes->get('dashboard/manager', 'Dashboard::manager');
 $routes->get('dashboard/staff', 'Dashboard::staff');
+$routes->get('dashboard/viewer', 'Dashboard::viewer');
 $routes->get('debug/session', 'Debug::session');
 $routes->match(['get','post'], 'auth/dbfetch', 'Auth::dbfetch');
 // Inventory page for managers
@@ -64,9 +65,14 @@ $routes->get('dashboard/staff/barcode', function () {
 $routes->get('dashboard/manager/warehouses', 'WarehouseController::index');
 $routes->get('api/warehouse/list', 'WarehouseController::list');
 $routes->post('api/warehouse/create', 'WarehouseController::create');
+$routes->get('api/warehouse/analytics', 'WarehouseController::getAnalytics');
+$routes->get('warehouses/seed-test-data', 'WarehouseController::seedWarehousesTestData');
 
 // Transfers
 $routes->post('api/transfer/create', 'TransferController::create');
+$routes->get('api/transfer/history', 'TransferController::getHistory');
+$routes->get('api/transfer/pending', 'TransferController::getPending');
+$routes->post('api/transfer/approve/(:num)', 'TransferController::approve/$1');
 
 // Barcode scan API
 $routes->post('api/barcode/scan', 'BarcodeController::scan');
@@ -74,6 +80,16 @@ $routes->post('api/barcode/scan', 'BarcodeController::scan');
 // Invoices
 $routes->get('api/invoice/list', 'InvoiceController::list');
 $routes->post('api/invoice/create', 'InvoiceController::create');
+
+// Inventory API endpoints
+$routes->get('api/inventory/stats', 'Inventory::getStats');
+$routes->get('api/inventory/by-warehouse/(:num)', 'Inventory::getByWarehouse/$1');
+$routes->get('api/inventory/low-stock', 'Inventory::getLowStock');
+$routes->get('api/inventory/all-with-warehouse', 'Inventory::getAllWithWarehouse');
+$routes->post('api/inventory/update-stock', 'Inventory::updateStock');
+
+// Test data seeder for development
+$routes->get('seed-test-data', 'TestDataController::seedTestData');
 
 
 // IT Administrator Routes
@@ -86,6 +102,23 @@ $routes->get('system-configuration', 'Admin::systemConfiguration');
 $routes->get('reports', 'Admin::reports');
 $routes->get('notifications', 'Admin::notifications');
 $routes->get('profile', 'Admin::profile');
+
+// Stock Movement and Staff Task Integration Routes
+$routes->post('stockmovements/approveInboundReceipt', 'stockmovements::approveInboundReceipt');
+$routes->post('stockmovements/approveOutboundReceipt', 'stockmovements::approveOutboundReceipt');
+$routes->get('stockmovements/getMovementHistory', 'stockmovements::getMovementHistory');
+$routes->get('stockmovements/getPendingMovements', 'stockmovements::getPendingMovements');
+
+// Staff Task API Routes
+$routes->get('api/staff-tasks/pending', 'StaffTaskController::getPendingTasks');
+$routes->post('api/staff-tasks/complete/(:num)', 'StaffTaskController::completeTask/$1');
+$routes->post('api/staff-tasks/find-by-barcode', 'StaffTaskController::getTaskByBarcode');
+$routes->get('api/staff-tasks/stats', 'StaffTaskController::getTaskStats');
+$routes->get('api/staff-tasks/history', 'StaffTaskController::getTaskHistory');
+
+// Test Data Routes for Staff Task Integration
+$routes->get('seed-staff-tasks-test-data', 'TestDataController::seedStaffTasksTestData');
+$routes->get('clear-staff-tasks-test-data', 'TestDataController::clearStaffTasksTestData');
 
 /*
  * --------------------------------------------------------------------

@@ -98,6 +98,7 @@
                             <th>Item</th>
                             <th>SKU</th>
                             <th>Category</th>
+                            <th>Warehouse</th>
                             <th>Location</th>
                             <th>Quantity</th>
                             <th>Status</th>
@@ -112,6 +113,7 @@
                                     <td><?= esc($it['name']) ?></td>
                                     <td><?= esc($it['sku']) ?></td>
                                     <td><?= esc($it['category']) ?></td>
+                                    <td><?= esc($it['warehouse_name'] ?? 'Not assigned') ?></td>
                                     <td><?= esc($it['location']) ?></td>
                                     <td><?= esc($it['quantity']) ?></td>
                                     <td>
@@ -128,6 +130,7 @@
                                             data-sku="<?= esc($it['sku']) ?>"
                                             data-category="<?= esc($it['category']) ?>"
                                             data-location="<?= esc($it['location']) ?>"
+                                            data-warehouse="<?= esc($it['warehouse_id'] ?? '') ?>"
                                             data-quantity="<?= esc($it['quantity']) ?>"
                                             data-status="<?= esc($it['status']) ?>"
                                             data-expiry="<?= esc($it['expiry']) ?>"
@@ -141,7 +144,7 @@
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="8" class="text-center text-muted">No items found</td>
+                                <td colspan="9" class="text-center text-muted">No items found</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -161,6 +164,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                   </div>
                   <form method="post" action="<?= site_url('inventory/create') ?>">
+                      <?= csrf_field() ?>
                   <div class="modal-body">
                       <div class="row g-3">
                           <div class="col-md-8">
@@ -188,6 +192,12 @@
                                   <option>Flooring Materials</option>
                                   <option>Doors &amp; Windows</option>
                                   <option>Insulation Materials</option>
+                              </select>
+                          </div>
+                          <div class="col-md-4">
+                              <label class="form-label">Warehouse</label>
+                              <select name="warehouse_id" class="form-select" id="add-warehouse" required>
+                                  <option value="">Select Warehouse</option>
                               </select>
                           </div>
                           <div class="col-md-4">
@@ -259,7 +269,8 @@
                     <h5 class="modal-title" id="editItemModalLabel">Edit Inventory Item</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <form method="post" id="edit-item-form" action="<?= site_url('inventory/update') ?>">
+                    <form method="post" id="edit-item-form" action="<?= site_url('inventory/update/0') ?>">
+                        <?= csrf_field() ?>
                     <div class="modal-body">
                         <input type="hidden" name="id" id="edit-id" />
                         <div class="row g-3">
@@ -288,6 +299,12 @@
                                     <option>Flooring Materials</option>
                                     <option>Doors &amp; Windows</option>
                                     <option>Insulation Materials</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Warehouse</label>
+                                <select name="warehouse_id" id="edit-warehouse" class="form-select" required>
+                                    <option value="">Select Warehouse</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -336,6 +353,10 @@
     </div>
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Pass site URL to JavaScript
+        window.siteUrl = '<?= site_url() ?>';
+    </script>
     <script src="<?= base_url('js/inventory.js') ?>"></script>
 </body>
 </html>

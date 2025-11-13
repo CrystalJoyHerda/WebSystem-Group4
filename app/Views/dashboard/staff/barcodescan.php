@@ -178,6 +178,7 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
     document.addEventListener('DOMContentLoaded', function() {
         loadWarehouses();
         loadPendingTasks();
+        loadRecentScans();
         
         // Set up refresh button
         document.getElementById('refreshTasks').addEventListener('click', loadPendingTasks);
@@ -317,8 +318,8 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                 // Pre-fill the manual barcode input with SKU
                 document.getElementById('manualBarcodeInput').value = itemSku;
                 
-                // Show scanner modal
-                scannerModal.show();
+                // Automatically process the scan (no need to show modal for direct task scans)
+                processBarcodeScan(itemSku);
             });
         });
     }
@@ -387,72 +388,40 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
         showAlert('Processing scan...', 'info');
         
         try {
-            // First, check if there's a pending task for this barcode
-            const taskResponse = await fetch('<?= site_url('api/staff-tasks/find-by-barcode') ?>', {
+            // Use the new scan-item endpoint that handles the complete workflow
+            const response = await fetch('<?= site_url('api/staff-tasks/scan-item') ?>', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     barcode: barcode,
-                    warehouse_id: selectedWarehouse
+                    warehouse_id: selectedWarehouse,
+                    movement_type: currentScanType === 'inbound' ? 'IN' : 'OUT',
+                    quantity: 1
                 })
             });
 
-            if (taskResponse.ok) {
-                // Found a pending task - handle task completion
-                const taskResult = await taskResponse.json();
-                const task = taskResult.task;
-                const item = taskResult.item;
-                
-                // Confirm task completion with user
-                const confirmMessage = `Found pending ${task.movement_type} task for ${item.name}\n` +
-                                     `Reference: ${task.reference_no}\n` +
-                                     `Quantity: ${task.quantity}\n\n` +
-                                     `Complete this task?`;
-                
-                if (confirm(confirmMessage)) {
-                    await completeStaffTask(task.id, item, task);
-                } else {
-                    showAlert('Task completion cancelled', 'info');
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                if (result.type === 'task_scan') {
+                    // Task was found and moved to Recent Scans
+                    showAlert(`✓ Moved from To-Do to Recent Scans: ${result.scan.item_name}`, 'success');
+                    
+                    // Refresh both lists
+                    await loadPendingTasks();
+                    await loadRecentScans();
+                    
+                } else if (result.type === 'manual_scan') {
+                    // No task found, added as manual scan
+                    showAlert(`✓ Added to Recent Scans: ${result.scan.item_name} (Manual)`, 'info');
+                    await loadRecentScans();
                 }
                 
             } else {
-                // No pending task found - use regular scanning workflow
-                const response = await fetch('<?= site_url('api/barcode/scan') ?>', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        code: barcode,
-                        warehouse_id: selectedWarehouse
-                    })
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    const item = result.item;
-                    
-                    // Add to scanned items with full item information
-                    const scannedItem = {
-                        barcode: barcode,
-                        type: currentScanType,
-                        time: new Date().toLocaleString(),
-                        item: item,
-                        warehouse_id: selectedWarehouse,
-                        processed: false,
-                        error: null
-                    };
-                    
-                    scannedItems.push(scannedItem);
-                    renderScannedItems();
-                    
-                    showAlert(`Item found: ${item.name} (No pending tasks)`, 'success');
-                } else {
-                    const error = await response.json();
-                    showAlert(`Item not found: ${error.error}`, 'danger');
-                }
+                // Item not found or other error - show appropriate message
+                showAlert(`Error: ${result.error || 'Item not found'}`, 'danger');
             }
             
             // Clear input and close modal
@@ -608,50 +577,65 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
         });
     }
 
-    // Save & Update button
+    // Save & Update button (process recent scans persisted in DB)
     document.getElementById('btnSaveUpdate').addEventListener('click', async function() {
-        const pendingItems = scannedItems.filter(item => !item.processed && !item.error);
+        const button = this;
         
-        if (pendingItems.length === 0) {
-            showAlert('No pending items to process.', 'warning');
+        // Confirm action with user
+        if (!confirm('This will update inventory and complete associated tasks. Continue?')) {
             return;
         }
-
-        const button = this;
+        
         button.disabled = true;
         button.textContent = 'Processing...';
+        button.classList.remove('btn-save-update');
+        button.classList.add('btn-secondary');
 
         try {
-            let successCount = 0;
-            let errorCount = 0;
+            const response = await fetch('<?= site_url('api/recent-scans/save') ?>', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
 
-            for (const scanItem of pendingItems) {
-                try {
-                    await processStockMovement(scanItem);
-                    scanItem.processed = true;
-                    successCount++;
-                } catch (error) {
-                    console.error('Error processing item:', error);
-                    scanItem.error = error.message;
-                    errorCount++;
+            const result = await response.json();
+            if (response.ok && result.success) {
+                // Show detailed success message
+                let message = `✅ Successfully processed ${result.processed.length} item(s)!`;
+                if (result.task_updates && result.task_updates.length > 0) {
+                    message += `\n📋 Completed ${result.task_updates.length} task(s)`;
                 }
+                
+                showAlert(message, 'success');
+                
+                // Refresh all relevant lists
+                await loadRecentScans();
+                await loadPendingTasks();
+                
+                // Show summary of what was processed
+                if (result.processed.length > 0) {
+                    console.log('Processed items:', result.processed);
+                    const summary = result.processed.map(p => 
+                        `${p.item_name}: ${p.movement} ${p.qty} (${p.old_stock}→${p.new_stock})`
+                    ).join('\n');
+                    
+                    // Could show a detailed modal here if desired
+                    setTimeout(() => {
+                        showAlert('Inventory updated successfully!', 'info');
+                    }, 2000);
+                }
+                
+            } else {
+                throw new Error(result.error || 'Failed to process recent scans');
             }
-
-            renderScannedItems();
-            
-            if (successCount > 0) {
-                showAlert(`Processed ${successCount} item(s) successfully!`, 'success');
-            }
-            if (errorCount > 0) {
-                showAlert(`${errorCount} item(s) failed to process.`, 'warning');
-            }
-
-        } catch (error) {
-            console.error('Batch processing error:', error);
-            showAlert('Error processing items. Please try again.', 'danger');
+        } catch (err) {
+            console.error('Save & Update error:', err);
+            showAlert('❌ Failed to save & update: ' + (err.message || err), 'danger');
         } finally {
             button.disabled = false;
             button.textContent = 'Save & Update';
+            button.classList.add('btn-save-update');
+            button.classList.remove('btn-secondary');
         }
     });
 
@@ -707,6 +691,136 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
     function escapeHtml(s) {
         if (!s) return '';
         return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    /* Recent Scans helpers */
+    async function addScanToRecent(payload) {
+        try {
+            const response = await fetch('<?= site_url('api/recent-scans/add') ?>', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            return await response.json();
+        } catch (e) {
+            console.error('Failed to add recent scan', e);
+            return { success: false };
+        }
+    }
+
+    async function loadRecentScans() {
+        try {
+            const response = await fetch('<?= site_url('api/recent-scans/list') ?>');
+            if (!response.ok) return;
+            const data = await response.json();
+            if (data.success) {
+                renderRecentScans(data.scans || []);
+            }
+        } catch (e) {
+            console.error('Failed to load recent scans', e);
+        }
+    }
+
+    function renderRecentScans(scans) {
+        const list = document.getElementById('recentItemsList');
+        if (!scans || scans.length === 0) {
+            list.innerHTML = `
+                <div class="recent-item">
+                    <div class="recent-item-header">Recently Scanned Items</div>
+                    <div class="recent-item-status">No recent scans - items will appear here after scanning</div>
+                </div>
+            `;
+            return;
+        }
+
+        // Build a Bootstrap table with enhanced information
+        let html = `
+            <div class="table-responsive">
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Barcode</th>
+                        <th>Quantity</th>
+                        <th>Movement Type</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        scans.forEach(s => {
+            const statusBadge = s.status === 'Pending' ? 
+                '<span class="badge bg-warning">Pending</span>' : 
+                '<span class="badge bg-success">Processed</span>';
+            
+            const movementBadge = s.movement_type === 'IN' ? 
+                '<span class="badge bg-success">📥 IN</span>' : 
+                '<span class="badge bg-warning">📤 OUT</span>';
+
+            html += `
+                <tr data-id="${s.id}" class="${s.status === 'Pending' ? '' : 'table-success'}">
+                    <td>
+                        <strong>${escapeHtml(s.item_name)}</strong>
+                        <br><small class="text-muted">ID: ${s.item_id || 'N/A'}</small>
+                    </td>
+                    <td><code>${escapeHtml(s.item_sku)}</code></td>
+                    <td>
+                        <span class="badge bg-primary">${s.quantity}</span>
+                    </td>
+                    <td>${movementBadge}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        ${s.status === 'Pending' ? 
+                            `<button class="btn btn-sm btn-outline-danger btn-remove-scan" data-id="${s.id}">Remove</button>` :
+                            '<span class="text-muted">Processed</span>'
+                        }
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table></div>`;
+        
+        // Add summary info
+        const pendingCount = scans.filter(s => s.status === 'Pending').length;
+        const totalQty = scans.reduce((sum, s) => sum + (s.status === 'Pending' ? parseInt(s.quantity) : 0), 0);
+        
+        html += `
+            <div class="mt-2 p-2 bg-light rounded">
+                <small class="text-muted">
+                    <strong>Summary:</strong> ${pendingCount} pending scan(s), ${totalQty} total items ready to update
+                </small>
+            </div>
+        `;
+        
+        list.innerHTML = html;
+
+        // Attach remove handlers
+        list.querySelectorAll('.btn-remove-scan').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const id = this.dataset.id;
+                if (!confirm('Remove this scan from Recent Scans?')) return;
+                
+                try {
+                    const resp = await fetch('<?= site_url('api/recent-scans/remove') ?>/' + id, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const result = await resp.json();
+                    if (resp.ok && result.success) {
+                        showAlert('Removed scan', 'info');
+                        await loadRecentScans();
+                    } else {
+                        showAlert('Failed to remove scan', 'danger');
+                    }
+                } catch (e) {
+                    console.error('Remove scan error', e);
+                    showAlert('Error removing scan', 'danger');
+                }
+            });
+        });
     }
 })();
 </script>

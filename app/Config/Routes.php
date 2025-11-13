@@ -77,6 +77,12 @@ $routes->post('api/transfer/approve/(:num)', 'TransferController::approve/$1');
 // Barcode scan API
 $routes->post('api/barcode/scan', 'BarcodeController::scan');
 
+// Recent scans (staging area for staff barcode scans)
+$routes->post('api/recent-scans/add', 'StaffTaskController::addRecentScan');
+$routes->get('api/recent-scans/list', 'StaffTaskController::listRecentScans');
+$routes->post('api/recent-scans/remove/(:num)', 'StaffTaskController::removeRecentScan/$1');
+$routes->post('api/recent-scans/save', 'StaffTaskController::saveAndUpdateScans');
+
 // Invoices
 $routes->get('api/invoice/list', 'InvoiceController::list');
 $routes->post('api/invoice/create', 'InvoiceController::create');
@@ -113,6 +119,7 @@ $routes->get('stockmovements/getPendingMovements', 'stockmovements::getPendingMo
 $routes->get('api/staff-tasks/pending', 'StaffTaskController::getPendingTasks');
 $routes->post('api/staff-tasks/complete/(:num)', 'StaffTaskController::completeTask/$1');
 $routes->post('api/staff-tasks/find-by-barcode', 'StaffTaskController::getTaskByBarcode');
+$routes->post('api/staff-tasks/scan-item', 'StaffTaskController::scanTaskItem');
 $routes->get('api/staff-tasks/stats', 'StaffTaskController::getTaskStats');
 $routes->get('api/staff-tasks/history', 'StaffTaskController::getTaskHistory');
 

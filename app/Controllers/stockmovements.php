@@ -5,28 +5,33 @@ use CodeIgniter\Controller;
 use App\Models\StockMovementModel;
 use App\Models\StaffTaskModel;
 use App\Models\InventoryModel;
+use App\Models\InboundReceiptModel;
+use App\Models\OutboundReceiptModel;
 
 class stockmovements extends Controller 
 {
     protected $stockMovementModel;
     protected $staffTaskModel;
     protected $inventoryModel;
+    protected $inboundReceiptModel;
+    protected $outboundReceiptModel;
 
     public function __construct()
     {
         $this->stockMovementModel = new StockMovementModel();
         $this->staffTaskModel = new StaffTaskModel();
         $this->inventoryModel = new InventoryModel();
+        $this->inboundReceiptModel = new InboundReceiptModel();
+        $this->outboundReceiptModel = new OutboundReceiptModel();
     }
 
     /**
-     * Approve an inbound receipt
+     * Approve an inbound receipt by receipt ID
      * Creates stock movement record and staff task for barcode scanning
      * 
-     * @param string $receiptId Receipt reference (e.g., PO-1234)
      * @return \CodeIgniter\HTTP\ResponseInterface
      */
-    public function approveInboundReceipt()
+    public function approveInboundReceipt($receiptId = null)
     {
         // Check authentication and permissions
         if (!session()->get('isLoggedIn')) {
@@ -39,20 +44,46 @@ class stockmovements extends Controller
 
         $data = $this->request->getJSON(true) ?? $this->request->getPost();
         
-        // Validate required fields
-        if (!isset($data['reference_no']) || !isset($data['item_data'])) {
-            return $this->response->setStatusCode(400)->setJSON(['error' => 'Missing required fields']);
+        // Support both receipt ID from URL parameter and request data
+        if (!$receiptId && isset($data['receipt_id'])) {
+            $receiptId = $data['receipt_id'];
+        }
+        
+        // Also support legacy reference_no approach for backward compatibility
+        if (!$receiptId && isset($data['reference_no'])) {
+            $receipt = $this->inboundReceiptModel->where('reference_no', $data['reference_no'])->first();
+            $receiptId = $receipt['id'] ?? null;
         }
 
-        $referenceNo = $data['reference_no']; // e.g., PO-1234
-        $itemData = $data['item_data']; // Array of items in the receipt
-        $managerId = session('user_id');
+        if (!$receiptId) {
+            return $this->response->setStatusCode(400)->setJSON(['error' => 'Receipt ID or reference number required']);
+        }
+
+        $managerId = session('userID');
+        
+        // Validate user ID from session
+        if (!$managerId) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Manager ID not found in session']);
+        }
 
         try {
+            // Get receipt with items
+            $receiptWithItems = $this->inboundReceiptModel->getReceiptWithItems($receiptId);
+            
+            if (!$receiptWithItems) {
+                return $this->response->setStatusCode(404)->setJSON(['error' => 'Receipt not found']);
+            }
+
+            if ($receiptWithItems['status'] !== 'Pending') {
+                return $this->response->setStatusCode(400)->setJSON(['error' => 'Receipt is not pending approval']);
+            }
+
             $db = \Config\Database::connect();
             $db->transStart();
 
             $createdTasks = [];
+            $referenceNo = $receiptWithItems['reference_no'];
+            $itemData = $receiptWithItems['items'];
 
             foreach ($itemData as $item) {
                 // 1. Create stock movement record
@@ -62,7 +93,7 @@ class stockmovements extends Controller
                     'id' => $item['item_id'], // inventory item id
                     'quantity' => $item['quantity'],
                     'movement_type' => 'in', // inbound
-                    'company_name' => $item['supplier'] ?? 'External Supplier',
+                    'company_name' => $receiptWithItems['supplier_name'] ?? 'External Supplier',
                     'location' => $item['warehouse_name'] ?? 'Warehouse',
                     'status' => 'approved', // Manager approved
                     'items_in_progress' => 1
@@ -101,6 +132,9 @@ class stockmovements extends Controller
                 ];
             }
 
+            // 3. Mark receipt as approved
+            $this->inboundReceiptModel->approveReceipt($receiptId, $managerId);
+
             $db->transComplete();
 
             if ($db->transStatus() === false) {
@@ -111,7 +145,8 @@ class stockmovements extends Controller
                 'success' => true,
                 'message' => "Inbound receipt {$referenceNo} approved successfully",
                 'created_tasks' => $createdTasks,
-                'tasks_count' => count($createdTasks)
+                'tasks_count' => count($createdTasks),
+                'receipt_id' => $receiptId
             ]);
 
         } catch (\Exception $e) {
@@ -123,12 +158,12 @@ class stockmovements extends Controller
     }
 
     /**
-     * Approve an outbound receipt
+     * Approve an outbound receipt by receipt ID
      * Creates stock movement record and staff task for barcode scanning
      * 
      * @return \CodeIgniter\HTTP\ResponseInterface
      */
-    public function approveOutboundReceipt()
+    public function approveOutboundReceipt($receiptId = null)
     {
         // Check authentication and permissions
         if (!session()->get('isLoggedIn')) {
@@ -141,20 +176,46 @@ class stockmovements extends Controller
 
         $data = $this->request->getJSON(true) ?? $this->request->getPost();
         
-        // Validate required fields
-        if (!isset($data['reference_no']) || !isset($data['item_data'])) {
-            return $this->response->setStatusCode(400)->setJSON(['error' => 'Missing required fields']);
+        // Support both receipt ID from URL parameter and request data
+        if (!$receiptId && isset($data['receipt_id'])) {
+            $receiptId = $data['receipt_id'];
+        }
+        
+        // Also support legacy reference_no approach for backward compatibility
+        if (!$receiptId && isset($data['reference_no'])) {
+            $receipt = $this->outboundReceiptModel->where('reference_no', $data['reference_no'])->first();
+            $receiptId = $receipt['id'] ?? null;
         }
 
-        $referenceNo = $data['reference_no']; // e.g., SO-5678
-        $itemData = $data['item_data']; // Array of items in the shipment
-        $managerId = session('user_id');
+        if (!$receiptId) {
+            return $this->response->setStatusCode(400)->setJSON(['error' => 'Receipt ID or reference number required']);
+        }
+
+        $managerId = session('userID');
+        
+        // Validate user ID from session
+        if (!$managerId) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Manager ID not found in session']);
+        }
 
         try {
+            // Get receipt with items
+            $receiptWithItems = $this->outboundReceiptModel->getReceiptWithItems($receiptId);
+            
+            if (!$receiptWithItems) {
+                return $this->response->setStatusCode(404)->setJSON(['error' => 'Receipt not found']);
+            }
+
+            if ($receiptWithItems['status'] !== 'Pending') {
+                return $this->response->setStatusCode(400)->setJSON(['error' => 'Receipt is not pending approval']);
+            }
+
             $db = \Config\Database::connect();
             $db->transStart();
 
             $createdTasks = [];
+            $referenceNo = $receiptWithItems['reference_no'];
+            $itemData = $receiptWithItems['items'];
 
             foreach ($itemData as $item) {
                 // Validate stock availability
@@ -170,7 +231,7 @@ class stockmovements extends Controller
                     'id' => $item['item_id'], // inventory item id
                     'quantity' => $item['quantity'],
                     'movement_type' => 'out', // outbound
-                    'company_name' => $item['customer'] ?? 'External Customer',
+                    'company_name' => $receiptWithItems['customer_name'] ?? 'External Customer',
                     'location' => $item['warehouse_name'] ?? 'Warehouse',
                     'status' => 'approved', // Manager approved
                     'items_in_progress' => 1
@@ -209,6 +270,9 @@ class stockmovements extends Controller
                 ];
             }
 
+            // 3. Mark receipt as approved
+            $this->outboundReceiptModel->approveReceipt($receiptId, $managerId);
+
             $db->transComplete();
 
             if ($db->transStatus() === false) {
@@ -219,7 +283,8 @@ class stockmovements extends Controller
                 'success' => true,
                 'message' => "Outbound shipment {$referenceNo} approved successfully",
                 'created_tasks' => $createdTasks,
-                'tasks_count' => count($createdTasks)
+                'tasks_count' => count($createdTasks),
+                'receipt_id' => $receiptId
             ]);
 
         } catch (\Exception $e) {
@@ -268,5 +333,84 @@ class stockmovements extends Controller
             log_message('error', 'Failed to get pending movements: ' . $e->getMessage());
             return $this->response->setStatusCode(500)->setJSON(['error' => 'Internal server error']);
         }
+    }
+
+    /**
+     * Get pending inbound receipts
+     * 
+     * @return \CodeIgniter\HTTP\ResponseInterface
+     */
+    public function getPendingInboundReceipts()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Unauthorized']);
+        }
+
+        if (session('role') !== 'manager') {
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Manager access required']);
+        }
+
+        try {
+            $receipts = $this->inboundReceiptModel->getPendingReceipts();
+            
+            // Enrich with item details
+            foreach ($receipts as &$receipt) {
+                $receiptWithItems = $this->inboundReceiptModel->getReceiptWithItems($receipt['id']);
+                $receipt['items'] = $receiptWithItems['items'] ?? [];
+                $receipt['items_summary'] = $this->generateItemsSummary($receiptWithItems['items'] ?? []);
+            }
+            
+            return $this->response->setJSON($receipts);
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to get pending inbound receipts: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'Internal server error']);
+        }
+    }
+
+    /**
+     * Get pending outbound receipts
+     * 
+     * @return \CodeIgniter\HTTP\ResponseInterface
+     */
+    public function getPendingOutboundReceipts()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Unauthorized']);
+        }
+
+        if (session('role') !== 'manager') {
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Manager access required']);
+        }
+
+        try {
+            $receipts = $this->outboundReceiptModel->getPendingReceipts();
+            
+            // Enrich with item details
+            foreach ($receipts as &$receipt) {
+                $receiptWithItems = $this->outboundReceiptModel->getReceiptWithItems($receipt['id']);
+                $receipt['items'] = $receiptWithItems['items'] ?? [];
+                $receipt['items_summary'] = $this->generateItemsSummary($receiptWithItems['items'] ?? []);
+            }
+            
+            return $this->response->setJSON($receipts);
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to get pending outbound receipts: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'Internal server error']);
+        }
+    }
+
+    /**
+     * Generate a summary of items for display
+     */
+    private function generateItemsSummary($items)
+    {
+        if (empty($items)) return 'No items';
+        
+        if (count($items) === 1) {
+            $item = $items[0];
+            return "{$item['item_name']} — qty {$item['quantity']}";
+        }
+        
+        return count($items) . ' items, total qty: ' . array_sum(array_column($items, 'quantity'));
     }
 }

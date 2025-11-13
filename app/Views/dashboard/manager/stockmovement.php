@@ -90,34 +90,8 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                             <div class="card-body">
                                 <h5 class="card-title">Inbound Receipts</h5>
                                 <div class="inbound-list mt-3">
-                                    <ul class="list-unstyled mb-0">
-                                        <li class="mb-3 d-flex align-items-start justify-content-between" data-ref="PO-1234">
-                                            <div>
-                                                <strong>PO-1234</strong><br>
-                                                <small>Portland Cement 50kg — qty 50 — 2025-10-14</small>
-                                            </div>
-                                            <div class="ms-3">
-                                                <button type="button" class="btn btn-sm btn-primary accept-btn" data-ref="PO-1234">Accept</button>
-                                            </div>
-                                        </li>
-                                        <li class="mb-3 d-flex align-items-start justify-content-between" data-ref="PO-1210">
-                                            <div>
-                                                <strong>PO-1210</strong><br>
-                                                <small>Vinyl Flooring Plank — qty 200 — 2025-10-11</small>
-                                            </div>
-                                            <div class="ms-3">
-                                                <button type="button" class="btn btn-sm btn-primary accept-btn" data-ref="PO-1210">Accept</button>
-                                            </div>
-                                        </li>
-                                        <li class="mb-3 d-flex align-items-start justify-content-between" data-ref="PO-1205">
-                                            <div>
-                                                <strong>PO-1205</strong><br>
-                                                <small>PVC Pipe 2in — qty 200 — 2025-10-09</small>
-                                            </div>
-                                            <div class="ms-3">
-                                                <button type="button" class="btn btn-sm btn-primary accept-btn" data-ref="PO-1205">Accept</button>
-                                            </div>
-                                        </li>
+                                    <ul class="list-unstyled mb-0" id="inbound-receipts-list">
+                                        <li class="text-muted text-center py-3">Loading inbound receipts...</li>
                                     </ul>
                                 </div>
                             </div>
@@ -127,34 +101,8 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                             <div class="card-body">
                                 <h5 class="card-title">Outbound Shipments</h5>
                                 <div class="outbound-list mt-3">
-                                    <ul class="list-unstyled mb-0">
-                                        <li class="mb-3 d-flex align-items-start justify-content-between" data-ref="SO-5678">
-                                            <div>
-                                                <strong>SO-5678</strong><br>
-                                                <small>Hex Bolts M10 — qty 100 — 2025-10-13</small>
-                                            </div>
-                                            <div class="ms-3">
-                                                <button type="button" class="btn btn-sm btn-outline-success approve-btn" data-ref="SO-5678">Approve</button>
-                                            </div>
-                                        </li>
-                                        <li class="mb-3 d-flex align-items-start justify-content-between" data-ref="SO-5599">
-                                            <div>
-                                                <strong>SO-5599</strong><br>
-                                                <small>Copper Wire Roll — qty 40 — 2025-10-10</small>
-                                            </div>
-                                            <div class="ms-3">
-                                                <button type="button" class="btn btn-sm btn-outline-success approve-btn" data-ref="SO-5599">Approve</button>
-                                            </div>
-                                        </li>
-                                        <li class="mb-3 d-flex align-items-start justify-content-between" data-ref="SO-5588">
-                                            <div>
-                                                <strong>SO-5588</strong><br>
-                                                <small>Timber Plank 2x4 — qty 60 — 2025-10-08</small>
-                                            </div>
-                                            <div class="ms-3">
-                                                <button type="button" class="btn btn-sm btn-outline-success approve-btn" data-ref="SO-5588">Approve</button>
-                                            </div>
-                                        </li>
+                                    <ul class="list-unstyled mb-0" id="outbound-receipts-list">
+                                        <li class="text-muted text-center py-3">Loading outbound receipts...</li>
                                     </ul>
                                 </div>
                             </div>
@@ -239,10 +187,12 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
             };
 
             // Handle accept button clicks (inbound receipts)
-            document.querySelectorAll('.accept-btn').forEach(function(btn){
-                btn.addEventListener('click', async function(e){
+            document.addEventListener('click', async function(e) {
+                if (e.target.classList.contains('accept-btn')) {
                     e.preventDefault();
                     
+                    const btn = e.target;
+                    const receiptId = btn.getAttribute('data-receipt-id');
                     const ref = btn.getAttribute('data-ref') || '';
                     const originalText = btn.textContent;
                     
@@ -251,36 +201,28 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                     btn.textContent = 'Processing...';
                     
                     try {
-                        // Prepare data for approval
-                        const receiptData = sampleReceiptData[ref];
-                        if (!receiptData) {
-                            throw new Error('Receipt data not found');
-                        }
-
-                        // Call approval API
+                        // Call approval API with receipt ID
                         const response = await fetch('<?= site_url('stockmovements/approveInboundReceipt') ?>', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
-                                reference_no: ref,
-                                item_data: receiptData.item_data
+                                receipt_id: receiptId
                             })
                         });
 
                         const result = await response.json();
 
                         if (response.ok && result.success) {
-                            // Success - update button and show message
-                            btn.classList.remove('btn-primary');
-                            btn.classList.add('btn-success');
-                            btn.textContent = 'Accepted ✓';
-                            
+                            // Success - remove item from pending list
                             const li = btn.closest('li');
-                            if(li) li.classList.add('accepted-item');
+                            if(li) {
+                                li.style.opacity = '0.5';
+                                setTimeout(() => li.remove(), 500);
+                            }
 
-                            showMessage('success', `${result.message}. Created ${result.tasks_count} barcode scanning task(s) for staff.`);
+                            showMessage('success', `${result.message}. Receipt ${ref} approved and staff tasks created.`);
                             
                             // Load updated movement history
                             setTimeout(loadMovementHistory, 1000);
@@ -295,14 +237,16 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                         btn.textContent = originalText;
                         showMessage('danger', 'Failed to approve inbound receipt: ' + error.message);
                     }
-                });
+                }
             });
 
-            // Handle approve button clicks (outbound shipments)
-            document.querySelectorAll('.approve-btn').forEach(function(btn){
-                btn.addEventListener('click', async function(e){
+                    // Handle approve button clicks (outbound shipments)
+            document.addEventListener('click', async function(e) {
+                if (e.target.classList.contains('approve-btn')) {
                     e.preventDefault();
                     
+                    const btn = e.target;
+                    const receiptId = btn.getAttribute('data-receipt-id');
                     const ref = btn.getAttribute('data-ref') || '';
                     const originalText = btn.textContent;
                     
@@ -311,36 +255,28 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                     btn.textContent = 'Processing...';
                     
                     try {
-                        // Prepare data for approval
-                        const shipmentData = sampleReceiptData[ref];
-                        if (!shipmentData) {
-                            throw new Error('Shipment data not found');
-                        }
-
-                        // Call approval API
+                        // Call approval API with receipt ID
                         const response = await fetch('<?= site_url('stockmovements/approveOutboundReceipt') ?>', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
-                                reference_no: ref,
-                                item_data: shipmentData.item_data
+                                receipt_id: receiptId
                             })
                         });
 
                         const result = await response.json();
 
                         if (response.ok && result.success) {
-                            // Success - update button and show message
-                            btn.classList.remove('btn-outline-success');
-                            btn.classList.add('btn-success');
-                            btn.textContent = 'Approved ✓';
-                            
+                            // Success - remove item from pending list
                             const li = btn.closest('li');
-                            if(li) li.classList.add('approved-item');
+                            if(li) {
+                                li.style.opacity = '0.5';
+                                setTimeout(() => li.remove(), 500);
+                            }
 
-                            showMessage('success', `${result.message}. Created ${result.tasks_count} barcode scanning task(s) for staff.`);
+                            showMessage('success', `${result.message}. Receipt ${ref} approved and stock updated.`);
                             
                             // Load updated movement history
                             setTimeout(loadMovementHistory, 1000);
@@ -355,7 +291,7 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                         btn.textContent = originalText;
                         showMessage('danger', 'Failed to approve outbound shipment: ' + error.message);
                     }
-                });
+                }
             });
 
             // Utility function to show messages
@@ -413,8 +349,92 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                 return date.toLocaleDateString();
             }
 
-            // Load initial movement history
-            document.addEventListener('DOMContentLoaded', loadMovementHistory);
+            // Load pending inbound receipts
+            async function loadPendingInboundReceipts() {
+                try {
+                    const response = await fetch('<?= site_url('stockmovements/getPendingInboundReceipts') ?>');
+                    if (response.ok) {
+                        const receipts = await response.json();
+                        updateInboundReceiptsList(receipts);
+                    } else {
+                        throw new Error('Failed to load inbound receipts');
+                    }
+                } catch (error) {
+                    console.error('Failed to load inbound receipts:', error);
+                    document.getElementById('inbound-receipts-list').innerHTML = 
+                        '<li class="text-danger text-center py-3">Failed to load inbound receipts</li>';
+                }
+            }
+
+            // Load pending outbound receipts
+            async function loadPendingOutboundReceipts() {
+                try {
+                    const response = await fetch('<?= site_url('stockmovements/getPendingOutboundReceipts') ?>');
+                    if (response.ok) {
+                        const receipts = await response.json();
+                        updateOutboundReceiptsList(receipts);
+                    } else {
+                        throw new Error('Failed to load outbound receipts');
+                    }
+                } catch (error) {
+                    console.error('Failed to load outbound receipts:', error);
+                    document.getElementById('outbound-receipts-list').innerHTML = 
+                        '<li class="text-danger text-center py-3">Failed to load outbound receipts</li>';
+                }
+            }
+
+            // Update inbound receipts list
+            function updateInboundReceiptsList(receipts) {
+                const listEl = document.getElementById('inbound-receipts-list');
+                
+                if (!receipts || receipts.length === 0) {
+                    listEl.innerHTML = '<li class="text-muted text-center py-3">No pending inbound receipts</li>';
+                    return;
+                }
+
+                listEl.innerHTML = receipts.map(receipt => `
+                    <li class="mb-3 d-flex align-items-start justify-content-between" data-ref="${receipt.reference_no}">
+                        <div>
+                            <strong>${receipt.reference_no}</strong><br>
+                            <small>${receipt.supplier_name} — ${receipt.total_items} item(s) — ${formatDate(receipt.created_at)}</small>
+                        </div>
+                        <div class="ms-3">
+                            <button type="button" class="btn btn-sm btn-primary accept-btn" 
+                                    data-receipt-id="${receipt.id}" data-ref="${receipt.reference_no}">Accept</button>
+                        </div>
+                    </li>
+                `).join('');
+            }
+
+            // Update outbound receipts list
+            function updateOutboundReceiptsList(receipts) {
+                const listEl = document.getElementById('outbound-receipts-list');
+                
+                if (!receipts || receipts.length === 0) {
+                    listEl.innerHTML = '<li class="text-muted text-center py-3">No pending outbound receipts</li>';
+                    return;
+                }
+
+                listEl.innerHTML = receipts.map(receipt => `
+                    <li class="mb-3 d-flex align-items-start justify-content-between" data-ref="${receipt.reference_no}">
+                        <div>
+                            <strong>${receipt.reference_no}</strong><br>
+                            <small>${receipt.customer_name} — ${receipt.total_items} item(s) — ${formatDate(receipt.created_at)}</small>
+                        </div>
+                        <div class="ms-3">
+                            <button type="button" class="btn btn-sm btn-outline-success approve-btn" 
+                                    data-receipt-id="${receipt.id}" data-ref="${receipt.reference_no}">Approve</button>
+                        </div>
+                    </li>
+                `).join('');
+            }
+
+            // Load initial data
+            document.addEventListener('DOMContentLoaded', function() {
+                loadMovementHistory();
+                loadPendingInboundReceipts();
+                loadPendingOutboundReceipts();
+            });
         })();
     </script>
 </body>

@@ -114,6 +114,14 @@ $routes->post('stockmovements/approveInboundReceipt', 'stockmovements::approveIn
 $routes->post('stockmovements/approveOutboundReceipt', 'stockmovements::approveOutboundReceipt');
 $routes->get('stockmovements/getMovementHistory', 'stockmovements::getMovementHistory');
 $routes->get('stockmovements/getPendingMovements', 'stockmovements::getPendingMovements');
+$routes->get('stockmovements/getPendingInboundReceipts', 'stockmovements::getPendingInboundReceipts');
+$routes->get('stockmovements/getPendingOutboundReceipts', 'stockmovements::getPendingOutboundReceipts');
+
+// Receipt Management Routes
+$routes->get('api/receipts/inbound/pending', 'stockmovements::getPendingInboundReceipts');
+$routes->get('api/receipts/outbound/pending', 'stockmovements::getPendingOutboundReceipts');
+$routes->post('api/receipts/inbound/(:num)/approve', 'stockmovements::approveInboundReceipt/$1');
+$routes->post('api/receipts/outbound/(:num)/approve', 'stockmovements::approveOutboundReceipt/$1');
 
 // Staff Task API Routes
 $routes->get('api/staff-tasks/pending', 'StaffTaskController::getPendingTasks');

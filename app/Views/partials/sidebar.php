@@ -41,7 +41,6 @@ elseif ($role === 'viewer') $roleLabel = 'Warehouse Viewer';
         <?php elseif ($role === 'staff'): ?>
             <a class="nav-link" href="<?= site_url('dashboard/staff') ?>">Dashboard</a>
             <a class="nav-link" href="<?= site_url('dashboard/staff/barcode') ?>">Barcode Scanning</a>
-            <a class="nav-link" href="<?= site_url('dashboard/staff/stock') ?>">Stock Movements</a>
             <a class="nav-link" href="<?= site_url('inventory') ?>">Inventory</a>
         <?php elseif ($role === 'viewer'): ?>
             <a class="nav-link" href="<?= site_url('dashboard/viewer') ?>">Dashboard</a>

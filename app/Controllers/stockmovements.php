@@ -400,6 +400,102 @@ class stockmovements extends Controller
     }
 
     /**
+     * Create an outbound movement (from manager modal) and create staff task
+     */
+    public function createOutbound()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Unauthorized']);
+        }
+
+        if (session('role') !== 'manager') {
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Manager access required']);
+        }
+
+        $data = $this->request->getJSON(true) ?? $this->request->getPost();
+
+        // Required fields
+        $required = ['product_id', 'quantity', 'destination'];
+        foreach ($required as $f) {
+            if (empty($data[$f])) {
+                return $this->response->setStatusCode(400)->setJSON(['error' => "Missing required field: {$f}"]);
+            }
+        }
+
+        $productId = (int) $data['product_id'];
+        $quantity = (int) $data['quantity'];
+        $destination = trim($data['destination']);
+        $productCode = $data['product_code'] ?? '';
+        $date = $data['date'] ?? date('Y-m-d');
+        $remarks = $data['remarks'] ?? null;
+
+        $managerId = session('userID');
+
+        try {
+            $db = \Config\Database::connect();
+            $db->transStart();
+
+            // Verify product exists in inventory
+            $item = $this->inventoryModel->find($productId);
+            if (! $item) {
+                return $this->response->setStatusCode(404)->setJSON(['error' => 'Product not found']);
+            }
+
+            // Build a reference/order number for this outbound (manager-created)
+            $referenceNo = 'OUT-' . date('Ymd') . '-' . rand(1000, 9999);
+
+            // Create stock movement
+            $movementData = [
+                'transaction_number' => 'TXN-' . time() . '-' . rand(100, 999),
+                'order_number' => $referenceNo,
+                'id' => $productId,
+                'quantity' => $quantity,
+                'movement_type' => 'out',
+                'company_name' => $destination,
+                'location' => $destination,
+                'status' => 'pending',
+                'items_in_progress' => 1
+            ];
+
+            $movementId = $this->stockMovementModel->createMovement($movementData);
+            if (! $movementId) throw new \Exception('Failed to create stock movement');
+
+            // Create staff task for outbound packing
+            $taskData = [
+                'movement_id' => $movementId,
+                'reference_no' => $referenceNo,
+                'warehouse_id' => $item['warehouse_id'] ?? null,
+                'item_id' => $productId,
+                'item_name' => $item['name'] ?? $item['item_name'] ?? ('Item ' . $productId),
+                'item_sku' => $productCode ?: ($item['sku'] ?? ''),
+                'quantity' => $quantity,
+                'movement_type' => 'OUT',
+                'assigned_by' => $managerId,
+                'notes' => $remarks ?? 'Created via manager outbound form'
+            ];
+
+            $taskId = $this->staffTaskModel->createTask($taskData);
+            if (! $taskId) throw new \Exception('Failed to create staff task');
+
+            $db->transComplete();
+            if ($db->transStatus() === false) throw new \Exception('Transaction failed');
+
+            // Return created movement and task so frontends can refresh immediately
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Outbound created and task assigned',
+                'movement_id' => $movementId,
+                'task_id' => $taskId,
+                'reference_no' => $referenceNo
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Create outbound failed: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'Failed to create outbound: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
      * Generate a summary of items for display
      */
     private function generateItemsSummary($items)

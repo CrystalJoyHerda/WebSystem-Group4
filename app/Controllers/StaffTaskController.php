@@ -363,14 +363,41 @@ class StaffTaskController extends Controller
                 ]);
             }
 
-            // Task found - move to recent scans without updating inventory yet
+            // If this task is an OUT (export) task, validate available stock now
+            $taskQty = isset($task['quantity']) ? (int)$task['quantity'] : 1;
+            $movementType = strtoupper($task['movement_type'] ?? 'IN');
+
+            if ($movementType === 'OUT') {
+                $available = isset($inventoryItem['quantity']) ? (int)$inventoryItem['quantity'] : 0;
+                if ($available < $taskQty) {
+                    // Insufficient stock: mark task as RED STOCK and mark related stock movement (if any)
+                    try {
+                        $this->staffTaskModel->update($task['id'], ['status' => 'RED STOCK']);
+                        if (!empty($task['movement_id'])) {
+                            $this->stockMovementModel->updateMovementStatus($task['movement_id'], 'red_stock');
+                        }
+                    } catch (\Exception $e) {
+                        log_message('error', 'Failed to mark RED STOCK: ' . $e->getMessage());
+                    }
+
+                    return $this->response->setStatusCode(409)->setJSON([
+                        'success' => false,
+                        'error' => 'Insufficient stock',
+                        'message' => 'Insufficient stock for export - task marked as RED STOCK',
+                        'task_id' => $task['id'] ?? null,
+                        'movement_id' => $task['movement_id'] ?? null,
+                    ]);
+                }
+            }
+
+            // Stock is sufficient or task is inbound: move to recent scans without updating inventory yet
             $scan = $this->recentScanModel->upsertScan(
-                $userId, 
-                $warehouseId, 
-                $barcode, 
-                $inventoryItem['name'], 
-                $task['movement_type'], 
-                $task['quantity'], 
+                $userId,
+                $warehouseId,
+                $barcode,
+                $inventoryItem['name'],
+                $task['movement_type'],
+                $task['quantity'],
                 $inventoryItem['id']
             );
 

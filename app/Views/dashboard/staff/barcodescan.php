@@ -171,6 +171,10 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
     let selectedWarehouse = null;
     let warehouses = [];
     let isProcessingScans = false;
+    let currentTaskId = null;
+    let videoStream = null;
+    let barcodeDetector = null;
+    let scanningActive = false;
 
     const scannerModal = new bootstrap.Modal(document.getElementById('scannerModal'));
 
@@ -182,6 +186,12 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
         
         // Set up refresh button
         document.getElementById('refreshTasks').addEventListener('click', loadPendingTasks);
+        // Poll for new tasks every 5 seconds so manager-created tasks appear promptly
+        setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                loadPendingTasks();
+            }
+        }, 5000);
     });
 
     async function loadWarehouses() {
@@ -267,19 +277,23 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
         const tasksHtml = tasks.map(task => {
             const badgeClass = task.movement_type === 'IN' ? 'bg-success' : 'bg-warning';
             const icon = task.movement_type === 'IN' ? '📥' : '📤';
-            
+            // Status handling: mark RED STOCK items prominently
+            const statusLabel = (task.status && task.status.toUpperCase() === 'RED STOCK') ? 'RED STOCK' : (task.status || 'Pending');
+            const statusClass = (task.status && task.status.toUpperCase() === 'RED STOCK') ? 'text-danger' : 'text-muted';
+
             return `
-                <div class="task-item border rounded p-3 mb-2" data-task-id="${task.id}">
+                <div class="task-item border rounded p-3 mb-2 ${task.status && task.status.toUpperCase() === 'RED STOCK' ? 'border-danger' : ''}" data-task-id="${task.id}">
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
                             <div class="d-flex align-items-center mb-2">
                                 <span class="me-2">${icon}</span>
                                 <strong>${task.reference_no}</strong>
                                 <span class="badge ${badgeClass} ms-2">${task.movement_type}</span>
+                                ${task.status && task.status.toUpperCase() === 'RED STOCK' ? '<span class="badge bg-danger ms-2">RED STOCK</span>' : ''}
                             </div>
                             <div class="task-details">
                                 <div><strong>${task.item_name}</strong></div>
-                                <div class="text-muted small">
+                                <div class="${statusClass} small">
                                     SKU: ${task.item_sku || 'N/A'} | Qty: ${task.quantity} | 
                                     Warehouse: ${task.warehouse_name || 'Unknown'}
                                 </div>
@@ -303,23 +317,37 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
 
         container.innerHTML = tasksHtml;
 
-        // Add event listeners to scan buttons
+        // Add event listeners to scan buttons (show modal, pre-fill, do NOT auto-submit)
         container.querySelectorAll('.scan-task-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const taskId = this.dataset.taskId;
                 const itemSku = this.dataset.itemSku;
                 const warehouseId = this.dataset.warehouseId;
-                
-                // Set warehouse and start scanning for this task
-                selectedWarehouse = parseInt(warehouseId);
-                document.getElementById('warehouseSelect').value = warehouseId;
+
+                // Set warehouse for context
+                selectedWarehouse = warehouseId ? parseInt(warehouseId) : selectedWarehouse;
+                const warehouseSel = document.getElementById('warehouseSelect');
+                if (warehouseSel) warehouseSel.value = warehouseId;
                 updateScanStatus();
-                
-                // Pre-fill the manual barcode input with SKU
-                document.getElementById('manualBarcodeInput').value = itemSku;
-                
-                // Automatically process the scan (no need to show modal for direct task scans)
-                processBarcodeScan(itemSku);
+
+                // Store current task id so Confirm will include it
+                currentTaskId = taskId || null;
+
+                // Pre-fill the manual barcode input with SKU so user can confirm or edit
+                document.getElementById('manualBarcodeInput').value = itemSku || '';
+
+                // Set the scan type to match the task movement, if provided
+                const select = document.getElementById('scanType');
+                if (select && this.closest('.task-item')) {
+                    const movement = this.closest('.task-item').querySelector('.badge')?.textContent || '';
+                    if (movement && movement.indexOf('IN') !== -1) select.value = 'inbound';
+                    if (movement && movement.indexOf('OUT') !== -1) select.value = 'outbound';
+                    currentScanType = select.value;
+                    document.getElementById('scanTypeBtn').textContent = select.options[select.selectedIndex].text + ' ▼';
+                }
+
+                // Show scanner modal (user must click Confirm to submit)
+                scannerModal.show();
             });
         });
     }
@@ -341,37 +369,22 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
         this.textContent = select.options[select.selectedIndex].text + ' ▼';
     });
 
-    // Start scanning button
+    // Start scanning button - shows modal and starts camera/scanner (if available)
     document.getElementById('btnStartScan').addEventListener('click', function() {
         if (!selectedWarehouse) {
             showAlert('Please select a warehouse first', 'warning');
             return;
         }
-        
+
         scannerModal.show();
-        // Try to access camera (basic implementation)
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-                .then(stream => {
-                    const video = document.getElementById('videoElement');
-                    video.srcObject = stream;
-                    video.play();
-                })
-                .catch(err => {
-                    console.log('Camera access denied or unavailable:', err);
-                    showAlert('Camera access denied. Please use manual entry.', 'info');
-                });
-        }
+        // start our scanner helper which requests camera and attempts detection
+        startScanner();
     });
 
-    // Manual barcode entry (Enter key)
-    document.getElementById('manualBarcodeInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && this.value.trim()) {
-            processBarcodeScan(this.value.trim());
-        }
-    });
+    // Manual barcode entry: do NOT auto-submit on Enter; user must click Confirm
+    // (This prevents accidental updates and follows the requirement that a Submit/Scan click triggers updates.)
 
-    // Confirm scan button
+    // Confirm scan button - only on explicit click will we process the barcode
     document.getElementById('btnConfirmScan').addEventListener('click', function() {
         const barcode = document.getElementById('manualBarcodeInput').value.trim();
         if (barcode) {
@@ -381,8 +394,103 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
         }
     });
 
+    // Helper: start camera and barcode detector scanning (fills input but DOES NOT submit)
+    async function startScanner() {
+        if (scanningActive) return;
+        scanningActive = true;
+
+        const video = document.getElementById('videoElement');
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = videoStream;
+            await video.play();
+
+            // Prefer native BarcodeDetector if available
+            const supportedFormats = (window.BarcodeDetector && BarcodeDetector.getSupportedFormats) ? await BarcodeDetector.getSupportedFormats() : [];
+            if (window.BarcodeDetector && supportedFormats.length > 0) {
+                barcodeDetector = new BarcodeDetector({formats: supportedFormats});
+            } else {
+                barcodeDetector = null; // fallback: no automatic decode
+            }
+
+            // If detector available, run detection loop that fills the manual input when decoded
+            if (barcodeDetector) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                const loop = async () => {
+                    if (!scanningActive) return;
+                    try {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const imageBitmap = await createImageBitmap(canvas);
+                        const results = await barcodeDetector.detect(imageBitmap);
+                        if (results && results.length > 0) {
+                            // Fill input but do not submit; user must press Confirm
+                            document.getElementById('manualBarcodeInput').value = results[0].rawValue;
+                            showAlert('Barcode detected. Review and press Confirm to submit.', 'info');
+                            // stop scanning further to conserve resources
+                            stopScanner();
+                            return;
+                        }
+                    } catch (err) {
+                        // detection can throw on invalid frames; ignore
+                    }
+                    requestAnimationFrame(loop);
+                };
+                requestAnimationFrame(loop);
+            } else {
+                // No automatic detection available; inform user to use manual input
+                showAlert('Camera ready. Manual entry supported if detection not available.', 'info');
+            }
+        } catch (err) {
+            console.warn('Camera start failed:', err);
+            showAlert('Unable to access camera. Please use manual entry.', 'warning');
+            scanningActive = false;
+        }
+    }
+
+    function stopScanner() {
+        scanningActive = false;
+        try {
+            const video = document.getElementById('videoElement');
+            if (video && video.srcObject) {
+                const tracks = video.srcObject.getTracks ? video.srcObject.getTracks() : [];
+                tracks.forEach(t => t.stop && t.stop());
+            }
+            if (video) video.srcObject = null;
+        } catch (e) {
+            console.warn('Error stopping scanner', e);
+        }
+        videoStream = null;
+        barcodeDetector = null;
+    }
+
+    // Ensure scanner stops when modal hides
+    document.getElementById('scannerModal').addEventListener('hidden.bs.modal', function() {
+        stopScanner();
+        // Clear currentTaskId when modal closed without confirm
+        currentTaskId = null;
+    });
+
+    // Start scanner when modal shown (covers cases where modal is opened by task button)
+    document.getElementById('scannerModal').addEventListener('shown.bs.modal', function() {
+        // begin camera/scanning if not already active
+        startScanner();
+    });
+
     async function processBarcodeScan(barcode) {
         if (isProcessingScans) return;
+        // Basic client-side validation
+        if (!barcode || barcode.length < 3) {
+            showAlert('Invalid barcode. Please verify the code before submitting.', 'warning');
+            return;
+        }
+        if (!selectedWarehouse) {
+            showAlert('Please select a warehouse before submitting scans.', 'warning');
+            return;
+        }
         
         isProcessingScans = true;
         showAlert('Processing scan...', 'info');
@@ -398,13 +506,15 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                     barcode: barcode,
                     warehouse_id: selectedWarehouse,
                     movement_type: currentScanType === 'inbound' ? 'IN' : 'OUT',
-                    quantity: 1
+                    quantity: 1,
+                    task_id: currentTaskId || null
                 })
             });
 
-            const result = await response.json();
+            let result = null;
+            try { result = await response.json(); } catch (e) { /* ignore parse errors */ }
 
-            if (response.ok && result.success) {
+            if (response.ok && result && result.success) {
                 if (result.type === 'task_scan') {
                     // Task was found and moved to Recent Scans
                     showAlert(`✓ Moved from To-Do to Recent Scans: ${result.scan.item_name}`, 'success');
@@ -418,14 +528,33 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                     showAlert(`✓ Added to Recent Scans: ${result.scan.item_name} (Manual)`, 'info');
                     await loadRecentScans();
                 }
-                
-            } else {
-                // Item not found or other error - show appropriate message
-                showAlert(`Error: ${result.error || 'Item not found'}`, 'danger');
+
+                // Clear input and close modal
+                document.getElementById('manualBarcodeInput').value = '';
+                // reset current task id after a successful submit
+                currentTaskId = null;
+                scannerModal.hide();
+                return;
             }
-            
+
+            // Handle insufficient stock (server returns 409 and marks RED STOCK on task)
+            if (response.status === 409) {
+                const msg = (result && result.error) ? result.error : 'Insufficient stock for this export.';
+                showAlert(msg, 'danger');
+                // Stop scanner and refresh tasks so RED STOCK status appears
+                stopScanner();
+                currentTaskId = null;
+                scannerModal.hide();
+                await loadPendingTasks();
+                return;
+            }
+
+            // Generic error
+            const errMsg = (result && result.error) ? result.error : 'Item not found or server error';
+            showAlert(`Error: ${errMsg}`, 'danger');
             // Clear input and close modal
             document.getElementById('manualBarcodeInput').value = '';
+            currentTaskId = null;
             scannerModal.hide();
             
         } catch (error) {

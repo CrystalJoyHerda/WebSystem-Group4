@@ -112,6 +112,7 @@ $routes->get('profile', 'Admin::profile');
 // Stock Movement and Staff Task Integration Routes
 $routes->post('stockmovements/approveInboundReceipt', 'stockmovements::approveInboundReceipt');
 $routes->post('stockmovements/approveOutboundReceipt', 'stockmovements::approveOutboundReceipt');
+$routes->post('stockmovements/createOutbound', 'stockmovements::createOutbound');
 $routes->get('stockmovements/getMovementHistory', 'stockmovements::getMovementHistory');
 $routes->get('stockmovements/getPendingMovements', 'stockmovements::getPendingMovements');
 $routes->get('stockmovements/getPendingInboundReceipts', 'stockmovements::getPendingInboundReceipts');

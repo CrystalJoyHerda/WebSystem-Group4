@@ -99,7 +99,12 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
 
                         <div class="card card-move">
                             <div class="card-body">
-                                <h5 class="card-title">Outbound Shipments</h5>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="card-title mb-0">Outbound Shipments</h5>
+                                    <div>
+                                        <button id="btnCreateOutbound" class="btn btn-sm btn-primary">Create Outbound</button>
+                                    </div>
+                                </div>
                                 <div class="outbound-list mt-3">
                                     <ul class="list-unstyled mb-0" id="outbound-receipts-list">
                                         <li class="text-muted text-center py-3">Loading outbound receipts...</li>
@@ -332,15 +337,21 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                 const tbody = document.querySelector('.movement-list tbody');
                 if (!tbody || !movements.length) return;
 
-                tbody.innerHTML = movements.slice(0, 10).map(movement => `
-                    <tr>
+                tbody.innerHTML = movements.slice(0, 10).map(movement => {
+                    const isRed = movement.status === 'red_stock' || (movement.status && movement.status.toLowerCase() === 'red_stock');
+                    const rowClass = isRed ? 'table-danger' : '';
+                    const statusBadge = isRed ? ' <span class="badge bg-danger ms-1">RED STOCK</span>' : '';
+
+                    return `
+                    <tr class="${rowClass}">
                         <td>${formatDate(movement.created_at || new Date())}</td>
-                        <td>${movement.movement_type === 'in' ? 'Inbound' : 'Outbound'}</td>
+                        <td>${movement.movement_type === 'in' ? 'Inbound' : 'Outbound'}${statusBadge}</td>
                         <td>${movement.item_sku || 'N/A'}</td>
                         <td class="text-end">${movement.quantity}</td>
                         <td>${movement.order_number}</td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
             }
 
             // Utility function to format date
@@ -435,7 +446,192 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                 loadPendingInboundReceipts();
                 loadPendingOutboundReceipts();
             });
+
+            // Expose helper functions to global scope so other scripts (modal) can call them
+            window.loadMovementHistory = loadMovementHistory;
+            window.loadPendingOutboundReceipts = loadPendingOutboundReceipts;
+            window.showMessage = showMessage;
         })();
     </script>
+        <!-- Create Outbound Modal -->
+        <div class="modal fade" id="createOutboundModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Create Outbound Shipment</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="createOutboundForm">
+                            <div class="mb-3">
+                                <label class="form-label">Product Name</label>
+                                <select id="outboundProduct" class="form-select">
+                                    <option value="">Select product...</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Product Code</label>
+                                <input type="text" id="outboundProductCode" class="form-control" readonly />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Quantity to outbound</label>
+                                <input type="number" id="outboundQuantity" class="form-control" min="1" value="1" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Destination</label>
+                                <input type="text" id="outboundDestination" class="form-control" placeholder="Warehouse / Customer / Location" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Date</label>
+                                <input type="date" id="outboundDate" class="form-control" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Remarks / Purpose</label>
+                                <textarea id="outboundRemarks" class="form-control" rows="3" placeholder="Optional remarks"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="btnSubmitOutbound">Submit Outbound</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+                (function(){
+                        const createOutboundModal = new bootstrap.Modal(document.getElementById('createOutboundModal'));
+                        const outboundProductEl = document.getElementById('outboundProduct');
+                        const outboundProductCodeEl = document.getElementById('outboundProductCode');
+                        const outboundQuantityEl = document.getElementById('outboundQuantity');
+                        const outboundDestinationEl = document.getElementById('outboundDestination');
+                        const outboundDateEl = document.getElementById('outboundDate');
+                        const outboundRemarksEl = document.getElementById('outboundRemarks');
+
+                        // Load products via inventory API (returns items with warehouse info)
+                        async function loadProducts() {
+                            try {
+                                const resp = await fetch('<?= site_url('api/inventory/all-with-warehouse') ?>');
+                                if (resp.ok) {
+                                    const items = await resp.json();
+                                    // Map inventory items to product shape
+                                    const products = (items || []).map(it => ({ id: it.id || it.item_id, name: it.name || it.item_name || it.item_sku || ('Item ' + (it.id||'')), sku: it.sku || it.item_sku || '' }));
+                                    populateProductSelect(products);
+                                    return;
+                                }
+                            } catch (e) {
+                                // ignore and fallback
+                            }
+
+                            // Fallback: derive products from sampleReceiptData in page scope
+                            try {
+                                if (typeof sampleReceiptData !== 'undefined') {
+                                    const products = Object.keys(sampleReceiptData).map((ref, idx) => {
+                                        const item = sampleReceiptData[ref].item_data && sampleReceiptData[ref].item_data[0];
+                                        return item ? { id: item.item_id || idx, name: item.item_name, sku: item.item_sku } : null;
+                                    }).filter(Boolean);
+                                    populateProductSelect(products);
+                                    return;
+                                }
+                            } catch (e) {}
+
+                            // If still no products, leave select as-is
+                        }
+
+                        function populateProductSelect(products) {
+                            if (!Array.isArray(products)) return;
+                            // Ensure unique products by id
+                            const seen = new Set();
+                            const opts = [];
+                            products.forEach(p => {
+                                if (!p || !p.id) return;
+                                if (seen.has(String(p.id))) return;
+                                seen.add(String(p.id));
+                                const name = p.name || (p.sku ? p.sku : 'Unnamed Product');
+                                const sku = p.sku || '';
+                                opts.push(`\n                    <option value="${p.id}" data-sku="${sku}">${name}</option>`);
+                            });
+                            outboundProductEl.innerHTML = '<option value="">Select product...</option>' + opts.join('');
+                        }
+
+                        // Auto-fill product code when product selected
+                        outboundProductEl && outboundProductEl.addEventListener('change', function() {
+                                const opt = this.options[this.selectedIndex];
+                                const sku = opt ? opt.dataset.sku || '' : '';
+                                outboundProductCodeEl.value = sku;
+                        });
+
+                        // Open modal button
+                        document.getElementById('btnCreateOutbound').addEventListener('click', function() {
+                                // reset form
+                                outboundProductEl.value = '';
+                                outboundProductCodeEl.value = '';
+                                outboundQuantityEl.value = '1';
+                                outboundDestinationEl.value = '';
+                                outboundDateEl.value = new Date().toISOString().slice(0,10);
+                                outboundRemarksEl.value = '';
+                                createOutboundModal.show();
+                        });
+
+                        // Submit outbound
+                        document.getElementById('btnSubmitOutbound').addEventListener('click', async function() {
+                                const productId = outboundProductEl.value;
+                                const productCode = outboundProductCodeEl.value.trim();
+                                const qty = parseInt(outboundQuantityEl.value || '0', 10);
+                                const destination = outboundDestinationEl.value.trim();
+                                const date = outboundDateEl.value;
+                                const remarks = outboundRemarksEl.value.trim();
+
+                                if (!productId) { showMessage('danger', 'Please select a product'); return; }
+                                if (!qty || qty <= 0) { showMessage('danger', 'Please enter a valid quantity'); return; }
+                                if (!destination) { showMessage('danger', 'Please enter a destination'); return; }
+
+                                this.disabled = true;
+                                this.textContent = 'Submitting...';
+
+                                try {
+                                        const resp = await fetch('<?= site_url('stockmovements/createOutbound') ?>', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                        product_id: productId,
+                                                        product_code: productCode,
+                                                        quantity: qty,
+                                                        destination: destination,
+                                                        date: date,
+                                                        remarks: remarks
+                                                })
+                                        });
+
+                                        const result = await resp.json().catch(() => ({}));
+                                        if (resp.ok && result.success) {
+                                                showMessage('success', result.message || 'Outbound created');
+                                                createOutboundModal.hide();
+                                                // Reload lists to show new outbound
+                                                setTimeout(loadPendingOutboundReceipts, 500);
+                                                setTimeout(loadMovementHistory, 800);
+                                        } else {
+                                                throw new Error(result.error || 'Failed to create outbound');
+                                        }
+
+                                } catch (err) {
+                                        console.error('Create outbound error:', err);
+                                        showMessage('danger', 'Failed to create outbound: ' + (err.message || err));
+                                } finally {
+                                        this.disabled = false;
+                                        this.textContent = 'Submit Outbound';
+                                }
+                        });
+
+                        // Load products on page ready
+                        document.addEventListener('DOMContentLoaded', loadProducts);
+                })();
+        </script>
 </body>
 </html>

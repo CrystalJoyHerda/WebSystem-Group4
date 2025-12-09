@@ -9,7 +9,7 @@ class StockMovementModel extends Model
     protected $primaryKey = 'movement_id';
     protected $allowedFields = [
         'transaction_number', 'items_in_progress', 'order_number', 'id', 
-        'quantity', 'company_name', 'movement_type', 'location', 'status'
+        'quantity', 'company_name', 'movement_type', 'location', 'status', 'warehouse_id'
     ];
     protected $useTimestamps = false;
 
@@ -39,10 +39,21 @@ class StockMovementModel extends Model
             'company_name' => $data['company_name'] ?? 'WeBuild Construction',
             'movement_type' => $data['movement_type'], // 'in' or 'out'
             'location' => $data['location'] ?? 'Warehouse',
-            'status' => $data['status'] ?? 'pending'
+            'status' => $data['status'] ?? 'pending',
+            'warehouse_id' => isset($data['warehouse_id']) ? (int)$data['warehouse_id'] : null,
         ];
 
         try {
+            // If the underlying DB table doesn't have a warehouse_id column, remove it to avoid SQL errors
+            try {
+                $fields = $this->db->getFieldNames($this->table);
+                if (!in_array('warehouse_id', $fields)) {
+                    unset($movementData['warehouse_id']);
+                }
+            } catch (\Throwable $e) {
+                // If inspection fails, silently continue without removing field — DB may still accept it
+            }
+
             return $this->insert($movementData);
         } catch (\Exception $e) {
             log_message('error', 'Stock movement creation failed: ' . $e->getMessage());
@@ -58,13 +69,7 @@ class StockMovementModel extends Model
      */
     public function getMovementHistory($limit = 50)
     {
-        return $this->db->table('stock_movements sm')
-            ->select('sm.*, i.name as item_name, i.sku as item_sku, i.warehouse_id')
-            ->join('inventory i', 'i.id = sm.id', 'left')
-            ->orderBy('sm.movement_id', 'DESC')
-            ->limit($limit)
-            ->get()
-            ->getResultArray();
+        return $this->getMovementHistoryByWarehouse($limit, null);
     }
 
     /**
@@ -102,13 +107,7 @@ class StockMovementModel extends Model
      */
     public function getPendingMovements()
     {
-        return $this->db->table('stock_movements sm')
-            ->select('sm.*, i.name as item_name, i.sku as item_sku, i.warehouse_id')
-            ->join('inventory i', 'i.id = sm.id', 'left')
-            ->where('sm.status', 'pending')
-            ->orderBy('sm.movement_id', 'DESC')
-            ->get()
-            ->getResultArray();
+        return $this->getByTypeAndStatusAndWarehouse(null, 'pending', null);
     }
 
     /**
@@ -120,13 +119,49 @@ class StockMovementModel extends Model
      */
     public function getByTypeAndStatus($type, $status = 'pending')
     {
-        return $this->db->table('stock_movements sm')
-            ->select('sm.*, i.name as item_name, i.sku as item_sku, i.warehouse_id')
+        return $this->getByTypeAndStatusAndWarehouse($type, $status, null);
+    }
+
+    /**
+     * Get movement history with optional warehouse filter
+     */
+    public function getMovementHistoryByWarehouse($limit = 50, $warehouseId = null)
+    {
+        $builder = $this->db->table('stock_movements sm')
+            ->select('sm.*, i.name as item_name, i.sku as item_sku, COALESCE(sm.warehouse_id, i.warehouse_id) as warehouse_id')
             ->join('inventory i', 'i.id = sm.id', 'left')
-            ->where('sm.movement_type', $type)
-            ->where('sm.status', $status)
             ->orderBy('sm.movement_id', 'DESC')
-            ->get()
-            ->getResultArray();
+            ->limit($limit);
+
+        if ($warehouseId) {
+            $builder->where('COALESCE(sm.warehouse_id, i.warehouse_id)', (int)$warehouseId);
+        }
+
+        return $builder->get()->getResultArray();
+    }
+
+    /**
+     * Get movements by type and status, with optional warehouse filter
+     */
+    public function getByTypeAndStatusAndWarehouse($type = null, $status = 'pending', $warehouseId = null)
+    {
+        $builder = $this->db->table('stock_movements sm')
+            ->select('sm.*, i.name as item_name, i.sku as item_sku, COALESCE(sm.warehouse_id, i.warehouse_id) as warehouse_id')
+            ->join('inventory i', 'i.id = sm.id', 'left')
+            ->orderBy('sm.movement_id', 'DESC');
+
+        if ($type !== null) {
+            $builder->where('sm.movement_type', $type);
+        }
+
+        if ($status !== null) {
+            $builder->where('sm.status', $status);
+        }
+
+        if ($warehouseId) {
+            $builder->where('COALESCE(sm.warehouse_id, i.warehouse_id)', (int)$warehouseId);
+        }
+
+        return $builder->get()->getResultArray();
     }
 }

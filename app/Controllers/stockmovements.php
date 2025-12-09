@@ -85,6 +85,7 @@ class stockmovements extends Controller
             $referenceNo = $receiptWithItems['reference_no'];
             $itemData = $receiptWithItems['items'];
 
+            $managerWarehouse = session('warehouse_id') ?: null;
             foreach ($itemData as $item) {
                 // 1. Create stock movement record
                 $movementData = [
@@ -96,7 +97,8 @@ class stockmovements extends Controller
                     'company_name' => $receiptWithItems['supplier_name'] ?? 'External Supplier',
                     'location' => $item['warehouse_name'] ?? 'Warehouse',
                     'status' => 'approved', // Manager approved
-                    'items_in_progress' => 1
+                    'items_in_progress' => 1,
+                    'warehouse_id' => $managerWarehouse ?? ($item['warehouse_id'] ?? null)
                 ];
 
                 $movementId = $this->stockMovementModel->createMovement($movementData);
@@ -109,7 +111,7 @@ class stockmovements extends Controller
                 $taskData = [
                     'movement_id' => $movementId,
                     'reference_no' => $referenceNo,
-                    'warehouse_id' => $item['warehouse_id'],
+                    'warehouse_id' => $managerWarehouse ?? ($item['warehouse_id'] ?? null),
                     'item_id' => $item['item_id'],
                     'item_name' => $item['item_name'],
                     'item_sku' => $item['item_sku'] ?? '',
@@ -217,6 +219,7 @@ class stockmovements extends Controller
             $referenceNo = $receiptWithItems['reference_no'];
             $itemData = $receiptWithItems['items'];
 
+            $managerWarehouse = session('warehouse_id') ?: null;
             foreach ($itemData as $item) {
                 // Validate stock availability
                 $inventoryItem = $this->inventoryModel->find($item['item_id']);
@@ -234,7 +237,8 @@ class stockmovements extends Controller
                     'company_name' => $receiptWithItems['customer_name'] ?? 'External Customer',
                     'location' => $item['warehouse_name'] ?? 'Warehouse',
                     'status' => 'approved', // Manager approved
-                    'items_in_progress' => 1
+                    'items_in_progress' => 1,
+                    'warehouse_id' => $managerWarehouse ?? ($item['warehouse_id'] ?? null)
                 ];
 
                 $movementId = $this->stockMovementModel->createMovement($movementData);
@@ -247,7 +251,7 @@ class stockmovements extends Controller
                 $taskData = [
                     'movement_id' => $movementId,
                     'reference_no' => $referenceNo,
-                    'warehouse_id' => $item['warehouse_id'],
+                    'warehouse_id' => $managerWarehouse ?? ($item['warehouse_id'] ?? null),
                     'item_id' => $item['item_id'],
                     'item_name' => $item['item_name'],
                     'item_sku' => $item['item_sku'] ?? '',
@@ -307,7 +311,8 @@ class stockmovements extends Controller
         }
 
         try {
-            $movements = $this->stockMovementModel->getMovementHistory(100);
+            $warehouseId = session('warehouse_id') ?: null;
+            $movements = $this->stockMovementModel->getMovementHistoryByWarehouse(100, $warehouseId);
             return $this->response->setJSON($movements);
         } catch (\Exception $e) {
             log_message('error', 'Failed to get movement history: ' . $e->getMessage());
@@ -327,7 +332,8 @@ class stockmovements extends Controller
         }
 
         try {
-            $movements = $this->stockMovementModel->getPendingMovements();
+            $warehouseId = session('warehouse_id') ?: null;
+            $movements = $this->stockMovementModel->getByTypeAndStatusAndWarehouse(null, 'pending', $warehouseId);
             return $this->response->setJSON($movements);
         } catch (\Exception $e) {
             log_message('error', 'Failed to get pending movements: ' . $e->getMessage());

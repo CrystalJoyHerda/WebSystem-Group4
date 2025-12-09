@@ -33,6 +33,9 @@ $routes->get('dashboard', 'Dashboard::index');
 $routes->get('dashboard/manager', 'Dashboard::manager');
 $routes->get('dashboard/staff', 'Dashboard::staff');
 $routes->get('dashboard/viewer', 'Dashboard::viewer');
+// Warehouse 2 dashboards
+$routes->get('dashboard/warehouse2/manager', 'Warehouse2Dashboard::manager');
+$routes->get('dashboard/warehouse2/staff', 'Warehouse2Dashboard::staff');
 $routes->get('debug/session', 'Debug::session');
 $routes->match(['get','post'], 'auth/dbfetch', 'Auth::dbfetch');
 // Inventory page for managers
@@ -59,6 +62,11 @@ $routes->delete('api/workforce/(:num)', 'WorkforceController::delete/$1');
 
 $routes->get('dashboard/staff/barcode', function () {
     return view('dashboard/staff/barcodescan');
+});
+
+// Warehouse2 staff barcode route (direct view for convenience)
+$routes->get('dashboard/warehouse2/staff/barcode', function () {
+    return view('warehouse2/staff_dashboard/barcodescan');
 });
 
 // Warehouses
@@ -113,6 +121,8 @@ $routes->get('profile', 'Admin::profile');
 $routes->post('stockmovements/approveInboundReceipt', 'stockmovements::approveInboundReceipt');
 $routes->post('stockmovements/approveOutboundReceipt', 'stockmovements::approveOutboundReceipt');
 $routes->post('stockmovements/createOutbound', 'stockmovements::createOutbound');
+
+// Debug routes (temporary) - removed
 $routes->get('stockmovements/getMovementHistory', 'stockmovements::getMovementHistory');
 $routes->get('stockmovements/getPendingMovements', 'stockmovements::getPendingMovements');
 $routes->get('stockmovements/getPendingInboundReceipts', 'stockmovements::getPendingInboundReceipts');

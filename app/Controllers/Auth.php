@@ -129,6 +129,35 @@ class Auth extends Controller
                         'role'       => $user['role'],
                         'isLoggedIn' => true
                     ]);
+                    // Determine warehouse assignment for the user in a safe order:
+                    // 1) Prefer `warehouse_id` column on the `users` row (if present)
+                    // 2) Fall back to `user_warehouses` mapping table (if present)
+                    // 3) Default to warehouse 1 (Main Warehouse)
+                    try {
+                        if (isset($user['warehouse_id']) && !empty($user['warehouse_id'])) {
+                            // Use explicit warehouse assigned on the users table
+                            session()->set('warehouse_id', (int)$user['warehouse_id']);
+                        } else {
+                            $db = \Config\Database::connect();
+                            if ($db->tableExists('user_warehouses')) {
+                                $uw = $db->table('user_warehouses')->where('user_id', $user['id'])->get()->getRowArray();
+                                if ($uw && isset($uw['warehouse_id'])) {
+                                    session()->set('warehouse_id', (int)$uw['warehouse_id']);
+                                } else {
+                                    session()->set('warehouse_id', 1);
+                                }
+                            } else {
+                                // Mapping table not present; default to Main Warehouse
+                                session()->set('warehouse_id', 1);
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        // If anything fails, set a safe default and continue
+                        session()->set('warehouse_id', 1);
+                        if (function_exists('log_message')) {
+                            log_message('error', '[Auth::login] warehouse lookup failed: ' . $e->getMessage());
+                        }
+                    }
 
                     session()->setFlashdata('success', value: 'Welcome back, ' . $user['name'] . '!');
                     // Redirect based on role

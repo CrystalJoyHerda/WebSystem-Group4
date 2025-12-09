@@ -44,12 +44,16 @@ class StaffTaskController extends Controller
 
         try {
             $warehouseId = $this->request->getGet('warehouse_id');
+            // Default to session warehouse if not provided by request
+            if (empty($warehouseId)) {
+                $warehouseId = session('warehouse_id') ?: null;
+            }
             
             // Get only truly pending tasks (not scanned or completed)
             $tasks = $this->staffTaskModel->where('status', 'Pending');
             
             if ($warehouseId) {
-                $tasks = $tasks->where('warehouse_id', $warehouseId);
+                $tasks = $tasks->where('warehouse_id', (int)$warehouseId);
             }
             
             $tasks = $tasks->orderBy('created_at', 'ASC')->findAll();
@@ -293,7 +297,8 @@ class StaffTaskController extends Controller
         }
 
         try {
-            $stats = $this->staffTaskModel->getTaskStats();
+            $warehouseId = session('warehouse_id') ?: null;
+            $stats = $this->staffTaskModel->getTaskStats($warehouseId);
             return $this->response->setJSON($stats);
         } catch (\Exception $e) {
             log_message('error', 'Failed to get task statistics: ' . $e->getMessage());

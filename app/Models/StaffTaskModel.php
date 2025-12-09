@@ -167,24 +167,43 @@ class StaffTaskModel extends Model
      * 
      * @return array Task statistics
      */
-    public function getTaskStats()
+    public function getTaskStats($warehouseId = null)
     {
-        $stats = [
-            'total_pending' => $this->where('status', 'Pending')->countAllResults(),
-            'total_completed_today' => $this->where('status', 'Completed')
-                                           ->where('DATE(completed_at)', date('Y-m-d'))
-                                           ->countAllResults(),
-            'total_failed' => $this->where('status', 'Failed')->countAllResults()
-        ];
+        $builder = $this->where('1', '1');
 
-        // Get pending by type
-        $stats['pending_inbound'] = $this->where('status', 'Pending')
-                                        ->where('movement_type', 'IN')
-                                        ->countAllResults();
-        
-        $stats['pending_outbound'] = $this->where('status', 'Pending')
-                                         ->where('movement_type', 'OUT')
-                                         ->countAllResults();
+        // Helper to apply warehouse filter when present
+        $applyWarehouse = function($qb) use ($warehouseId) {
+            if ($warehouseId) {
+                $qb->where('warehouse_id', (int)$warehouseId);
+            }
+            return $qb;
+        };
+
+        $stats = [];
+
+        // Total pending
+        $pendingBuilder = $this->where('status', 'Pending');
+        if ($warehouseId) $pendingBuilder->where('warehouse_id', (int)$warehouseId);
+        $stats['total_pending'] = $pendingBuilder->countAllResults();
+
+        // Total completed today
+        $completedBuilder = $this->where('status', 'Completed');
+        if ($warehouseId) $completedBuilder->where('warehouse_id', (int)$warehouseId);
+        $stats['total_completed_today'] = $completedBuilder->where('DATE(completed_at)', date('Y-m-d'))->countAllResults();
+
+        // Total failed
+        $failedBuilder = $this->where('status', 'Failed');
+        if ($warehouseId) $failedBuilder->where('warehouse_id', (int)$warehouseId);
+        $stats['total_failed'] = $failedBuilder->countAllResults();
+
+        // Pending by type
+        $pendingInBuilder = $this->where('status', 'Pending')->where('movement_type', 'IN');
+        if ($warehouseId) $pendingInBuilder->where('warehouse_id', (int)$warehouseId);
+        $stats['pending_inbound'] = $pendingInBuilder->countAllResults();
+
+        $pendingOutBuilder = $this->where('status', 'Pending')->where('movement_type', 'OUT');
+        if ($warehouseId) $pendingOutBuilder->where('warehouse_id', (int)$warehouseId);
+        $stats['pending_outbound'] = $pendingOutBuilder->countAllResults();
 
         return $stats;
     }

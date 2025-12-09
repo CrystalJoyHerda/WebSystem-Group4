@@ -12,8 +12,14 @@ class Inventory extends BaseController
         }
 
         $model = new InventoryModel();
-        // Use the enhanced query that includes warehouse information
-        $items = $model->getItemsWithWarehouse();
+        // Show only items for the manager's warehouse (separation by warehouse)
+        $warehouseId = session('warehouse_id') ?: null;
+        if ($warehouseId) {
+            $items = $model->getByWarehouse((int)$warehouseId);
+        } else {
+            // Fallback to all items with warehouse info if no session warehouse
+            $items = $model->getItemsWithWarehouse();
+        }
 
         // Updated path to new location
         return view('dashboard/manager/inventory', ['items' => $items]);
@@ -151,11 +157,18 @@ class Inventory extends BaseController
         }
 
         $model = new InventoryModel();
-        
+        $warehouseId = session('warehouse_id') ?: null;
+
         try {
-            $total = $model->countAll();
-            $lowStock = count($model->getLowStockItems());
-            $outOfStock = $model->where('quantity <=', 0)->countAllResults();
+            if ($warehouseId) {
+                $total = count($model->getByWarehouse((int)$warehouseId));
+                $lowStock = count($model->getLowStockItems((int)$warehouseId));
+                $outOfStock = $model->where('warehouse_id', (int)$warehouseId)->where('quantity <=', 0)->countAllResults();
+            } else {
+                $total = $model->countAll();
+                $lowStock = count($model->getLowStockItems());
+                $outOfStock = $model->where('quantity <=', 0)->countAllResults();
+            }
 
             return $this->response->setJSON([
                 'total' => $total,
@@ -200,9 +213,10 @@ class Inventory extends BaseController
         }
 
         $model = new InventoryModel();
-        
+        $warehouseId = session('warehouse_id') ?: null;
+
         try {
-            $items = $model->getLowStockItems();
+            $items = $model->getLowStockItems($warehouseId !== null ? (int)$warehouseId : null);
             return $this->response->setJSON($items);
         } catch (\Exception $e) {
             return $this->response->setStatusCode(500)->setJSON(['error' => 'Internal server error']);
@@ -219,9 +233,14 @@ class Inventory extends BaseController
         }
 
         $model = new InventoryModel();
-        
+        $warehouseId = session('warehouse_id') ?: null;
+
         try {
-            $items = $model->getItemsWithWarehouse();
+            if ($warehouseId) {
+                $items = $model->getByWarehouse((int)$warehouseId);
+            } else {
+                $items = $model->getItemsWithWarehouse();
+            }
             return $this->response->setJSON($items);
         } catch (\Exception $e) {
             return $this->response->setStatusCode(500)->setJSON(['error' => 'Internal server error']);

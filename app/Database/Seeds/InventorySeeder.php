@@ -1,0 +1,161 @@
+<?php
+
+namespace App\Database\Seeds;
+
+use CodeIgniter\Database\Seeder;
+
+class InventorySeeder extends Seeder
+{
+    public function run()
+    {
+        $now = date('Y-m-d H:i:s');
+
+        $data = [
+            [
+                'name'       => 'Portland Cement 50kg',
+                'sku'        => 'CEM-50-001',
+                'category'   => 'Building Materials',
+                'location'   => 'A-1-01',
+                'quantity'   => 250,
+                'status'     => 'in',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'Timber Plank 2x4',
+                'sku'        => 'TMR-24-003',
+                'category'   => 'Lumber & Wood Products',
+                'location'   => 'B-2-02',
+                'quantity'   => 120,
+                'status'     => 'in',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'Steel Rebar 12mm',
+                'sku'        => 'STL-RB-12',
+                'category'   => 'Steel & Metal Products',
+                'location'   => 'C-3-03',
+                'quantity'   => 500,
+                'status'     => 'in',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'Copper Wire Roll',
+                'sku'        => 'ELC-WR-01',
+                'category'   => 'Electrical Supplies',
+                'location'   => 'D-1-01',
+                'quantity'   => 40,
+                'status'     => 'in',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'PVC Pipe 2in',
+                'sku'        => 'PLB-PVC-2',
+                'category'   => 'Plumbing Supplies',
+                'location'   => 'E-2-02',
+                'quantity'   => 200,
+                'status'     => 'in',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'Exterior Paint 5L',
+                'sku'        => 'PNT-5L-004',
+                'category'   => 'Paints & Finishes',
+                'location'   => 'F-1-03',
+                'quantity'   => 15,
+                'status'     => 'low',
+                'expiry'     => '2027-06-30',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'Cordless Drill',
+                'sku'        => 'TLS-DRL-01',
+                'category'   => 'Tools & Equipment',
+                'location'   => 'G-2-01',
+                'quantity'   => 10,
+                'status'     => 'low',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'Safety Helmet',
+                'sku'        => 'SFT-HLM-01',
+                'category'   => 'Safety Gear',
+                'location'   => 'A-3-02',
+                'quantity'   => 60,
+                'status'     => 'in',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'Hex Bolts M10',
+                'sku'        => 'HB-M10-002',
+                'category'   => 'Fasteners & Hardware',
+                'location'   => 'B-1-03',
+                'quantity'   => 0,
+                'status'     => 'out',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'Roof Shingles',
+                'sku'        => 'RF-SHN-01',
+                'category'   => 'Roofing Materials',
+                'location'   => 'C-2-01',
+                'quantity'   => 80,
+                'status'     => 'in',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'Vinyl Flooring Plank',
+                'sku'        => 'FLR-VNL-01',
+                'category'   => 'Flooring Materials',
+                'location'   => 'D-3-03',
+                'quantity'   => 300,
+                'status'     => 'in',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'Aluminum Window Frame',
+                'sku'        => 'DRW-WND-01',
+                'category'   => 'Doors & Windows',
+                'location'   => 'E-1-02',
+                'quantity'   => 25,
+                'status'     => 'in',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name'       => 'Fiberglass Insulation Roll',
+                'sku'        => 'INS-FBR-01',
+                'category'   => 'Insulation Materials',
+                'location'   => 'F-2-03',
+                'quantity'   => 90,
+                'status'     => 'in',
+                'expiry'     => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        ];
+
+        $this->db->table('inventory')->insertBatch($data);
+    }
+}

@@ -135,26 +135,49 @@ $routes->get('api/staff-tasks/history', 'StaffTaskController::getTaskHistory');
 $routes->get('seed-staff-tasks-test-data', 'TestDataController::seedStaffTasksTestData');
 $routes->get('clear-staff-tasks-test-data', 'TestDataController::clearStaffTasksTestData');
 
-<<<<<<< HEAD
 // Account Payable Clerk Routes
-$routes->get('dashboard/account_payable', 'AccountPayable::index');
-$routes->get('dashboard/account_payable/invoices', 'AccountPayable::invoices');
-$routes->get('dashboard/account_payable/invoices/(:num)', 'AccountPayable::viewInvoice/$1');
-$routes->match(['get', 'post'], 'dashboard/account_payable/process_payment/(:num)', 'AccountPayable::processPayment/$1');
-$routes->match(['get', 'post'], 'dashboard/account_payable/create_invoice', 'AccountPayable::createInvoice');
-$routes->get('dashboard/account_payable/vendors', 'AccountPayable::vendors');
-$routes->get('dashboard/account_payable/reports', 'AccountPayable::reports');
+// Accounts Payable Clerk Routes
+$routes->get('dashboard/accounts_payable', 'AccountsPayableController::dashboard');
+$routes->get('dashboard/accounts_payable/dashboard', 'AccountsPayableController::dashboard');
+$routes->get('dashboard/accounts_payable/invoices', 'AccountsPayableController::invoices');
+$routes->get('dashboard/accounts_payable/invoices/create', 'AccountsPayableController::createInvoice');
+$routes->get('dashboard/accounts_payable/invoices/(:num)', 'AccountsPayableController::viewInvoice/$1');
+$routes->get('dashboard/accounts_payable/invoices/(:num)/edit', 'AccountsPayableController::editInvoice/$1');
+$routes->get('dashboard/accounts_payable/vendors', 'AccountsPayableController::vendors');
+$routes->get('dashboard/accounts_payable/vendors/create', 'AccountsPayableController::createVendor');
+$routes->get('dashboard/accounts_payable/vendors/(:num)', 'AccountsPayableController::viewVendor/$1');
+$routes->get('dashboard/accounts_payable/vendors/(:num)/edit', 'AccountsPayableController::editVendor/$1');
+$routes->get('dashboard/accounts_payable/payments', 'AccountsPayableController::payments');
+$routes->get('dashboard/accounts_payable/payments/create', 'AccountsPayableController::createPayment');
+$routes->get('dashboard/accounts_payable/payments/create/(:num)', 'AccountsPayableController::createPaymentForInvoice/$1');
+$routes->get('dashboard/accounts_payable/reports', 'AccountsPayableController::reports');
 
-// Account Payable API Routes
-$routes->get('api/ap/dashboard-stats', 'AccountPayable::getDashboardStats');
-$routes->get('api/ap/upcoming-payments', 'AccountPayable::getUpcomingPayments');
-$routes->get('api/ap/recent-invoices', 'AccountPayable::getRecentInvoices');
-$routes->post('api/ap/process-payment', 'AccountPayable::processPaymentApi');
-$routes->post('api/ap/create-invoice', 'AccountPayable::createInvoiceApi');
-$routes->get('api/ap/vendor-list', 'AccountPayable::getVendorList');
+// Accounts Payable API Routes
+$routes->get('api/accounts-payable/stats', 'AccountsPayableController::getStats');
+$routes->get('api/accounts-payable/recent-invoices', 'AccountsPayableController::getRecentInvoices');
+$routes->get('api/accounts-payable/payment-alerts', 'AccountsPayableController::getPaymentAlerts');
+$routes->get('api/accounts-payable/invoices', 'AccountsPayableController::getInvoices');
+$routes->get('api/accounts-payable/invoices/(:num)', 'AccountsPayableController::getInvoice/$1');
+$routes->post('api/accounts-payable/invoices/(:num)/approve', 'AccountsPayableController::approveInvoice/$1');
+$routes->get('api/accounts-payable/invoices/approved', 'AccountsPayableController::getApprovedInvoices');
+$routes->get('api/accounts-payable/vendors', 'AccountsPayableController::getVendors');
+$routes->get('api/accounts-payable/vendors/list', 'AccountsPayableController::getVendorsList');
+$routes->get('api/accounts-payable/vendors/categories', 'AccountsPayableController::getVendorCategories');
+$routes->get('api/accounts-payable/vendors/(:num)', 'AccountsPayableController::getVendor/$1');
+$routes->post('api/accounts-payable/vendors', 'AccountsPayableController::createVendorApi');
+$routes->get('api/accounts-payable/payments/stats', 'AccountsPayableController::getPaymentStats');
+$routes->get('api/accounts-payable/payments', 'AccountsPayableController::getPayments');
+$routes->get('api/accounts-payable/payments/scheduled', 'AccountsPayableController::getScheduledPayments');
+$routes->get('api/accounts-payable/payments/calendar', 'AccountsPayableController::getPaymentCalendar');
+$routes->post('api/accounts-payable/payments/process', 'AccountsPayableController::processPayment');
+$routes->get('api/accounts-payable/invoices/export', 'AccountsPayableController::exportInvoices');
+$routes->get('api/accounts-payable/reports/overview', 'AccountsPayableController::getOverviewReport');
+$routes->get('api/accounts-payable/reports/aging', 'AccountsPayableController::getAgingReport');
+$routes->get('api/accounts-payable/reports/vendor-analysis', 'AccountsPayableController::getVendorAnalysis');
+$routes->get('api/accounts-payable/reports/payment-history', 'AccountsPayableController::getPaymentHistory');
+$routes->get('api/accounts-payable/reports/cashflow', 'AccountsPayableController::getCashflowReport');
+$routes->get('api/accounts-payable/reports/export', 'AccountsPayableController::exportReport');
 
-=======
->>>>>>> 5ef6907f175cfcfbd71c05bd65f19d3ef01fffbe
 /*
  * --------------------------------------------------------------------
  * Additional Routing

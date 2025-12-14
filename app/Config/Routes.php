@@ -135,6 +135,7 @@ $routes->get('api/staff-tasks/history', 'StaffTaskController::getTaskHistory');
 $routes->get('seed-staff-tasks-test-data', 'TestDataController::seedStaffTasksTestData');
 $routes->get('clear-staff-tasks-test-data', 'TestDataController::clearStaffTasksTestData');
 
+<<<<<<< HEAD
 // Account Payable Clerk Routes
 $routes->get('dashboard/account_payable', 'AccountPayable::index');
 $routes->get('dashboard/account_payable/invoices', 'AccountPayable::invoices');
@@ -152,6 +153,8 @@ $routes->post('api/ap/process-payment', 'AccountPayable::processPaymentApi');
 $routes->post('api/ap/create-invoice', 'AccountPayable::createInvoiceApi');
 $routes->get('api/ap/vendor-list', 'AccountPayable::getVendorList');
 
+=======
+>>>>>>> 5ef6907f175cfcfbd71c05bd65f19d3ef01fffbe
 /*
  * --------------------------------------------------------------------
  * Additional Routing

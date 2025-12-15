@@ -4,7 +4,7 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateARInvoices extends Migration
+class CreateARinvoicesTable extends Migration
 {
     public function up()
     {
@@ -49,6 +49,6 @@ class CreateARInvoices extends Migration
 
     public function down()
     {
-        $this->forge->dropTable('ar_invoices', true);
+         $this->forge->dropTable('ar_invoices', true);
     }
 }

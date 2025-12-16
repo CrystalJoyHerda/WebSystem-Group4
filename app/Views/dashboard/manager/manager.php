@@ -284,16 +284,32 @@ foreach ($items as $it) {
                 return;
             }
 
-            const analyticsHtml = analytics.map(warehouse => {
+            // Filter out warehouses with 0 items and 0 usage
+            const filteredAnalytics = analytics.filter(warehouse => 
+                warehouse.total_items > 0 || warehouse.total_quantity > 0
+            );
+
+            if (filteredAnalytics.length === 0) {
+                container.innerHTML = '<div class="alert alert-info">No warehouse data available</div>';
+                return;
+            }
+
+            // Custom warehouse names for display
+            const warehouseNames = ['Warehouse A', 'Warehouse B'];
+
+            const analyticsHtml = filteredAnalytics.map((warehouse, index) => {
                 const totalCapacity = 10000; // This should come from warehouse configuration
                 const usagePercent = Math.min((warehouse.total_quantity / totalCapacity) * 100, 100);
                 const progressClass = usagePercent > 90 ? 'danger' : usagePercent > 70 ? 'warning' : 'success';
+                
+                // Use custom warehouse name if available, otherwise use the original name
+                const displayName = warehouseNames[index] || warehouse.warehouse_name || 'Unknown Warehouse';
                 
                 return `
                     <div class="col-md-4 mb-3">
                         <div class="card h-100">
                             <div class="card-body">
-                                <h6 class="card-title">${warehouse.warehouse_name || 'Unknown Warehouse'}</h6>
+                                <h6 class="card-title">${displayName}</h6>
                                 <div class="mb-2">
                                     <small class="text-muted">Usage: ${usagePercent.toFixed(1)}%</small>
                                     <div class="progress mt-1" style="height: 8px;">

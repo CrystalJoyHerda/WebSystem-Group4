@@ -60,44 +60,8 @@ class CreateOutboundShipmentsTables extends Migration
                 'null' => true,
             ],
         ]);
-
         $this->forge->addKey('id', true);
-        $this->forge->addKey('reference_no');
-        $this->forge->addKey('status');
         $this->forge->createTable('outbound_receipts');
-
-        // Create outbound_receipt_items table
-        $this->forge->addField([
-            'id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true,
-                'auto_increment' => true,
-            ],
-            'receipt_id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true,
-            ],
-            'item_id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true,
-            ],
-            'warehouse_id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true,
-            ],
-            'quantity' => [
-                'type' => 'INT',
-                'constraint' => 11,
-            ],
-        ]);
-
-        $this->forge->addKey('id', true);
-        $this->forge->addKey('receipt_id');
-        $this->forge->createTable('outbound_receipt_items');
     }
 
     public function down()

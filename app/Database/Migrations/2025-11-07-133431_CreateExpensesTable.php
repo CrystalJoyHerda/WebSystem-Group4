@@ -15,6 +15,11 @@ class CreateExpensesTable extends Migration
                 'unsigned'       => true,
                 'auto_increment' => true,
             ],
+            'vendor_id' => [
+                'type'       => 'INT',
+                'constraint' => 11,
+                'unsigned'   => true,
+            ],
             'expense_category' => [
                 'type'       => 'VARCHAR',
                 'constraint' => 100,

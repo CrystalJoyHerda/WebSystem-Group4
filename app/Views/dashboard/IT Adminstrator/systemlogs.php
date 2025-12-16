@@ -230,6 +230,7 @@
                 <div>
                     <div class="page-title">System Logs</div>
                     <div class="text-muted small">Audit trail of actions performed in the system.</div>
+                    <div class="text-muted small" id="currentTime" style="margin-top:2px;"></div>
                 </div>
                 <div class="d-flex gap-2 align-items-center flex-wrap">
                     <input id="logSearch" class="form-control form-control-sm" style="min-width:240px" placeholder="Search action/entity/user">
@@ -284,12 +285,16 @@
         const WAREHOUSE_API = '<?= site_url('api/admin/warehouses') ?>';
         const SET_WAREHOUSE_API = '<?= site_url('api/admin/current-warehouse') ?>';
         let debounceTimer = null;
+        let liveTimer = null;
+        let clockTimer = null;
 
         document.getElementById('logSearch').addEventListener('input', scheduleLoad);
         document.getElementById('entityFilter').addEventListener('change', loadLogs);
         document.getElementById('actionFilter').addEventListener('change', loadLogs);
 
         initWarehouse();
+
+        startClock();
 
         function scheduleLoad() {
             clearTimeout(debounceTimer);
@@ -390,9 +395,10 @@
 
             logs.forEach(l => {
                 const tr = document.createElement('tr');
+                const whenAbs = formatAbsoluteTime(l.created_at || '');
                 tr.innerHTML = `
                     <td>${escapeHtml(l.id)}</td>
-                    <td>${escapeHtml(l.created_at || '')}</td>
+                    <td class="js-live-time" data-ts="${escapeHtml(l.created_at || '')}" title="${escapeHtml(formatRelativeTime(l.created_at || ''))}">${escapeHtml(whenAbs)}</td>
                     <td>${escapeHtml(l.actor_name || 'System')}</td>
                     <td>${escapeHtml(prettyAction(l.action || ''))}</td>
                     <td>${escapeHtml(l.entity_type || '')}</td>
@@ -401,6 +407,92 @@
                 `;
                 tbody.appendChild(tr);
             });
+
+            refreshLiveTimes();
+            if (!liveTimer) {
+                liveTimer = setInterval(refreshLiveTimes, 30000);
+            }
+        }
+
+        function refreshLiveTimes() {
+            document.querySelectorAll('.js-live-time').forEach(td => {
+                const ts = td.getAttribute('data-ts') || '';
+                td.title = formatRelativeTime(ts);
+            });
+        }
+
+        function parseMysqlDateTime(s) {
+            const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+            if (!m) return null;
+            const y = Number(m[1]);
+            const mo = Number(m[2]) - 1;
+            const d = Number(m[3]);
+            const hh = Number(m[4]);
+            const mm = Number(m[5]);
+            const ss = Number(m[6]);
+            const dt = new Date(y, mo, d, hh, mm, ss);
+            return isNaN(dt.getTime()) ? null : dt;
+        }
+
+        function pad2(n) {
+            const v = Number(n);
+            return v < 10 ? `0${v}` : String(v);
+        }
+
+        function formatAbsoluteTime(s) {
+            const dt = parseMysqlDateTime(s);
+            if (!dt) return String(s || '');
+            const y = dt.getFullYear();
+            const mo = pad2(dt.getMonth() + 1);
+            const d = pad2(dt.getDate());
+            const hh = pad2(dt.getHours());
+            const mm = pad2(dt.getMinutes());
+            const ss = pad2(dt.getSeconds());
+            return `${y}-${mo}-${d} ${hh}:${mm}:${ss}`;
+        }
+
+        function startClock() {
+            const el = document.getElementById('currentTime');
+            if (!el) return;
+
+            const update = () => {
+                const now = new Date();
+                const y = now.getFullYear();
+                const mo = pad2(now.getMonth() + 1);
+                const d = pad2(now.getDate());
+                const hh = pad2(now.getHours());
+                const mm = pad2(now.getMinutes());
+                const ss = pad2(now.getSeconds());
+                el.textContent = `Current time: ${y}-${mo}-${d} ${hh}:${mm}:${ss}`;
+            };
+
+            update();
+            if (!clockTimer) {
+                clockTimer = setInterval(update, 1000);
+            }
+        }
+
+        function formatRelativeTime(s) {
+            const dt = parseMysqlDateTime(s);
+            if (!dt) return String(s || '');
+
+            let diffMs = Date.now() - dt.getTime();
+            if (diffMs < 0) diffMs = 0;
+
+            const sec = Math.floor(diffMs / 1000);
+            if (sec < 10) return 'Just now';
+            if (sec < 60) return `${sec}s ago`;
+
+            const min = Math.floor(sec / 60);
+            if (min < 60) return `${min}m ago`;
+
+            const hr = Math.floor(min / 60);
+            if (hr < 24) return `${hr}h ago`;
+
+            const day = Math.floor(hr / 24);
+            if (day < 7) return `${day}d ago`;
+
+            return dt.toLocaleString();
         }
 
         function prettyAction(a) {

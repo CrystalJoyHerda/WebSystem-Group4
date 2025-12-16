@@ -146,6 +146,14 @@ $routes->get('api/staff-tasks/history', 'StaffTaskController::getTaskHistory');
 $routes->get('seed-staff-tasks-test-data', 'TestDataController::seedStaffTasksTestData');
 $routes->get('clear-staff-tasks-test-data', 'TestDataController::clearStaffTasksTestData');
 
+// Warehouse Request Routes
+$routes->post('api/warehouse-requests/create', 'WarehouseRequestController::create');
+$routes->get('api/warehouse-requests/pending', 'WarehouseRequestController::getPendingRequests');
+$routes->post('api/warehouse-requests/approve/(:num)', 'WarehouseRequestController::approve/$1');
+$routes->get('api/warehouse-requests/deliveries', 'WarehouseRequestController::getDeliveries');
+$routes->post('api/warehouse-requests/mark-delivered/(:num)', 'WarehouseRequestController::markDelivered/$1');
+$routes->get('dashboard/staff/deliveries', 'WarehouseRequestController::deliveryPage');
+
 /*
  * --------------------------------------------------------------------
  * Additional Routing

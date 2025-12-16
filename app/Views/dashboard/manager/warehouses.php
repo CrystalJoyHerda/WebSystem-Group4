@@ -26,38 +26,19 @@
 
             <div class="page-title">Warehouses</div>
 
-            <!-- Warehouse Cards Section -->
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="mb-0">📊 Warehouse Overview</h5>
-                                <div>
-                                    <button class="btn btn-primary btn-sm me-2" onclick="loadWarehouseData()">
-                                        <i class="fas fa-sync-alt"></i> Refresh
-                                    </button>
-                                    <a href="<?= site_url('warehouses/seed-test-data') ?>" class="btn btn-success btn-sm">
-                                        <i class="fas fa-database"></i> Generate Test Data
-                                    </a>
-                                </div>
-                            </div>
-                            <div id="warehouseCards">
-                                <div class="text-center py-3">
-                                    <div class="spinner-border spinner-border-sm" role="status"></div>
-                                    <span class="ms-2">Loading warehouse data...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Detailed Warehouse Table -->
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0">Warehouse Management</h5>
+                        <div>
+                            <button class="btn btn-primary btn-sm me-2" onclick="loadWarehouseData()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                            <a href="<?= site_url('warehouses/seed-test-data') ?>" class="btn btn-success btn-sm">
+                                <i class="fas fa-database"></i> Generate Test Data
+                            </a>
+                        </div>
                     </div>
                     
                     <div class="table-responsive">
@@ -113,7 +94,6 @@
                         warehouse.total_items > 0 || warehouse.total_quantity > 0
                     );
                     
-                    displayWarehouseCards(filteredWarehouses);
                     displayWarehouseTable(filteredWarehouses);
                 } else {
                     showError();
@@ -122,83 +102,6 @@
                 console.error('Error loading warehouse data:', error);
                 showError();
             }
-        }
-
-        function displayWarehouseCards(warehouses) {
-            const container = document.getElementById('warehouseCards');
-            
-            if (!warehouses || warehouses.length === 0) {
-                container.innerHTML = `
-                    <div class="alert alert-info text-center">
-                        <i class="fas fa-warehouse fa-3x mb-3"></i>
-                        <p class="mb-0">No warehouse data available</p>
-                        <small>Click "Generate Test Data" to create sample warehouses</small>
-                    </div>`;
-                return;
-            }
-
-            const cardsHtml = warehouses.map((warehouse, index) => {
-                const totalCapacity = 10000; // This should come from warehouse configuration
-                const usagePercent = Math.min((warehouse.total_quantity / totalCapacity) * 100, 100);
-                const progressClass = usagePercent > 90 ? 'danger' : usagePercent > 70 ? 'warning' : 'success';
-                
-                // Use custom warehouse name if available
-                const displayName = warehouseNames[index] || warehouse.warehouse_name || 'Unknown Warehouse';
-                
-                return `
-                    <div class="col-md-4 mb-3">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="card-title mb-3">
-                                    <i class="fas fa-warehouse text-primary me-2"></i>${displayName}
-                                </h6>
-                                <div class="mb-3">
-                                    <small class="text-muted">Usage: ${usagePercent.toFixed(1)}%</small>
-                                    <div class="progress mt-1" style="height: 10px;">
-                                        <div class="progress-bar bg-${progressClass}" 
-                                             style="width: ${usagePercent}%"></div>
-                                    </div>
-                                </div>
-                                <div class="row text-center mb-2">
-                                    <div class="col-6">
-                                        <div class="p-2 bg-light rounded">
-                                            <small class="text-muted d-block">Items</small>
-                                            <strong class="fs-5">${warehouse.total_items || 0}</strong>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="p-2 bg-light rounded">
-                                            <small class="text-muted d-block">Stock</small>
-                                            <strong class="fs-5">${warehouse.total_quantity || 0}</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                                ${warehouse.low_stock_count > 0 ? 
-                                    `<div class="mt-2">
-                                        <span class="badge bg-warning">
-                                            <i class="fas fa-exclamation-triangle me-1"></i>
-                                            ${warehouse.low_stock_count} Low Stock
-                                        </span>
-                                    </div>` : 
-                                    `<div class="mt-2">
-                                        <span class="badge bg-success">
-                                            <i class="fas fa-check-circle me-1"></i>
-                                            All Stocked
-                                        </span>
-                                    </div>`
-                                }
-                                <div class="mt-3">
-                                    <button class="btn btn-sm btn-primary w-100" onclick="viewInventory(${warehouse.id})">
-                                        <i class="fas fa-boxes me-1"></i> View Inventory
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            container.innerHTML = `<div class="row">${cardsHtml}</div>`;
         }
 
         function displayWarehouseTable(warehouses) {
@@ -274,8 +177,6 @@
         }
 
         function showError() {
-            document.getElementById('warehouseCards').innerHTML = 
-                '<div class="alert alert-danger">Error loading warehouse data. Please try again.</div>';
             document.getElementById('warehouseTableBody').innerHTML = 
                 '<tr><td colspan="8" class="text-center"><div class="alert alert-danger">Error loading warehouse data</div></td></tr>';
         }

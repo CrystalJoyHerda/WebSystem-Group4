@@ -143,12 +143,50 @@ class StaffTaskController extends Controller
             if ($task['movement_type'] === 'IN') {
                 // Inbound - add to stock
                 $newStock = $currentStock + $taskQuantity;
-            } elseif ($task['movement_type'] === 'OUT') {
+            } elseif ($task['movement_type'] === 'OUT' || $task['movement_type'] === 'OUTBOUND') {
                 // Outbound - remove from stock
                 $newStock = $currentStock - $taskQuantity;
                 
                 if ($newStock < 0) {
                     throw new \Exception('Insufficient stock for outbound operation');
+                }
+                
+                // Check if this is part of a warehouse request
+                // Reference format: OUT-WR-YYYYMMDD-XXXX or similar
+                if (strpos($task['reference_no'], 'OUT-WR') !== false || strpos($task['reference_no'], 'OUT-') === 0) {
+                    // This is an outbound for a warehouse request
+                    // Find the outbound receipt and warehouse request
+                    $outboundReceiptModel = new \App\Models\OutboundReceiptModel();
+                    $warehouseRequestModel = new \App\Models\WarehouseRequestModel();
+                    $inboundReceiptModel = new \App\Models\InboundReceiptModel();
+                    
+                    // Find outbound receipt by reference
+                    $outboundReceipt = $outboundReceiptModel->where('reference_no', $task['reference_no'])->first();
+                    
+                    if ($outboundReceipt) {
+                        // Check if all tasks for this outbound are completed
+                        $allTasks = $this->staffTaskModel->where('reference_no', $task['reference_no'])->findAll();
+                        $pendingTasks = array_filter($allTasks, function($t) use ($taskId) {
+                            return $t['status'] === 'Pending' && $t['id'] != $taskId;
+                        });
+                        
+                        // If this is the last task, update statuses
+                        if (empty($pendingTasks)) {
+                            // Update outbound receipt status to SCANNED
+                            $outboundReceiptModel->update($outboundReceipt['id'], ['status' => 'SCANNED']);
+                            
+                            // Find and update warehouse request status to SCANNED and DELIVERING
+                            $warehouseRequest = $warehouseRequestModel->where('outbound_receipt_id', $outboundReceipt['id'])->first();
+                            if ($warehouseRequest) {
+                                $warehouseRequestModel->updateStatus($warehouseRequest['id'], 'DELIVERING');
+                                
+                                // Update inbound receipt status to DELIVERING
+                                if ($warehouseRequest['inbound_receipt_id']) {
+                                    $inboundReceiptModel->update($warehouseRequest['inbound_receipt_id'], ['status' => 'DELIVERING']);
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -180,7 +218,8 @@ class StaffTaskController extends Controller
                 'task_id' => $taskId,
                 'old_stock' => $currentStock,
                 'new_stock' => $newStock,
-                'movement_type' => $task['movement_type']
+                'movement_type' => $task['movement_type'],
+                'redirect_to_delivery' => ($task['movement_type'] === 'OUTBOUND' || $task['movement_type'] === 'OUT') && empty($pendingTasks ?? [])
             ]);
 
         } catch (\Exception $e) {

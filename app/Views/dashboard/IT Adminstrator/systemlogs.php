@@ -380,7 +380,8 @@
                 return;
             }
 
-            const logs = await res.json();
+            const payload = await res.json();
+            const logs = (payload && Array.isArray(payload.logs)) ? payload.logs : payload;
             tbody.innerHTML = '';
             if (!Array.isArray(logs) || logs.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-4">No logs</td></tr>';

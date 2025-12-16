@@ -663,10 +663,32 @@ class Admin extends Controller
         }
         $q = trim((string) ($this->request->getGet('q') ?? ''));
 
+        $entityType = trim((string) ($this->request->getGet('entity_type') ?? ''));
+        $action = trim((string) ($this->request->getGet('action') ?? ''));
+        $all = (int) ($this->request->getGet('all') ?? 0);
+
         $builder = $db->table('audit_logs a')
             ->select('a.id, a.warehouse_id, a.actor_user_id, a.action, a.entity_type, a.entity_id, a.before_json, a.after_json, a.ip_address, a.user_agent, a.created_at, u.name as actor_name, u.email as actor_email')
             ->join('users u', 'u.id = a.actor_user_id', 'left')
             ->orderBy('a.id', 'DESC');
+
+        if ($entityType !== '') {
+            $builder->where('a.entity_type', $entityType);
+        }
+
+        if ($action !== '') {
+            $builder->where('a.action', $action);
+        }
+
+        if (! $all && $db->fieldExists('warehouse_id', 'audit_logs')) {
+            $currentWarehouseId = $this->currentWarehouseId();
+            if ($currentWarehouseId !== null) {
+                $builder->groupStart()
+                    ->where('a.warehouse_id', $currentWarehouseId)
+                    ->orWhere('a.warehouse_id', null)
+                    ->groupEnd();
+            }
+        }
 
         if ($q !== '') {
             $builder->groupStart()
@@ -680,7 +702,100 @@ class Admin extends Controller
         $total = (int) $builder->countAllResults(false);
         $rows = $builder->get($limit, $offset)->getResultArray();
 
+        foreach ($rows as &$row) {
+            $row['summary'] = $this->buildAuditSummary($row);
+        }
+        unset($row);
+
         return $this->response->setJSON(['logs' => $rows, 'total' => $total]);
+    }
+
+    private function buildAuditSummary(array $row): string
+    {
+        $action = (string) ($row['action'] ?? '');
+        $entityType = (string) ($row['entity_type'] ?? '');
+        $entityId = $row['entity_id'] ?? null;
+
+        $before = null;
+        $after = null;
+
+        if (! empty($row['before_json'])) {
+            $decoded = json_decode((string) $row['before_json'], true);
+            if (is_array($decoded)) {
+                $before = $decoded;
+            }
+        }
+        if (! empty($row['after_json'])) {
+            $decoded = json_decode((string) $row['after_json'], true);
+            if (is_array($decoded)) {
+                $after = $decoded;
+            }
+        }
+
+        if ($entityType === 'user' || $entityType === 'user_status' || $entityType === 'user_password') {
+            $ref = is_array($after) && $after !== [] ? $after : (is_array($before) ? $before : []);
+            $email = isset($ref['email']) ? (string) $ref['email'] : '';
+            $name = isset($ref['name']) ? (string) $ref['name'] : '';
+            $role = isset($ref['role']) ? (string) $ref['role'] : '';
+            $who = $email !== '' ? $email : ($name !== '' ? $name : ($entityId !== null ? ('ID ' . $entityId) : ''));
+
+            if ($entityType === 'user_password') {
+                return $who !== '' ? 'Reset password for ' . $who : 'Reset user password';
+            }
+            if ($entityType === 'user_status') {
+                return $who !== '' ? 'Changed status for ' . $who : 'Changed user status';
+            }
+
+            if ($action === 'create') {
+                $suffix = $role !== '' ? ' (' . $role . ')' : '';
+                return $who !== '' ? 'Created user ' . $who . $suffix : 'Created user';
+            }
+            if ($action === 'update') {
+                return $who !== '' ? 'Updated user ' . $who : 'Updated user';
+            }
+            if ($action === 'delete') {
+                return $who !== '' ? 'Deleted user ' . $who : 'Deleted user';
+            }
+        }
+
+        if ($entityType === 'backup') {
+            $file = is_array($after) && isset($after['file']) ? (string) $after['file'] : '';
+            if ($file !== '') {
+                return 'Created backup ' . $file;
+            }
+            return 'Created backup';
+        }
+
+        if ($entityType === 'restore_backup') {
+            $file = is_array($after) && isset($after['file']) ? (string) $after['file'] : '';
+            if ($file !== '') {
+                return 'Restored backup ' . $file;
+            }
+            return 'Restored backup';
+        }
+
+        if ($entityType === 'system_settings') {
+            return 'Updated system settings';
+        }
+
+        if ($entityType === 'role_permissions') {
+            $roleKey = '';
+            if (is_array($after) && isset($after['role_key'])) {
+                $roleKey = (string) $after['role_key'];
+            } elseif (is_array($before) && isset($before['role_key'])) {
+                $roleKey = (string) $before['role_key'];
+            }
+            return $roleKey !== '' ? 'Updated permissions for role ' . $roleKey : 'Updated role permissions';
+        }
+
+        $base = trim(ucfirst($action) . ' ' . $entityType);
+        if ($base === '') {
+            return '';
+        }
+        if ($entityId !== null && $entityId !== '') {
+            return $base . ' #' . $entityId;
+        }
+        return $base;
     }
 
     public function overview()

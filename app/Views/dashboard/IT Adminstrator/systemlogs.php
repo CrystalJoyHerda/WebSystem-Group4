@@ -250,13 +250,19 @@
                     <select id="entityFilter" class="form-select form-select-sm" style="min-width:180px">
                         <option value="">All Entities</option>
                         <option value="user">User</option>
+                        <option value="user_status">User Status</option>
+                        <option value="user_password">User Password</option>
+                        <option value="profile">Profile</option>
+                        <option value="role_permissions">Role Permissions</option>
+                        <option value="system_settings">System Settings</option>
+                        <option value="backup">Backup</option>
+                        <option value="restore_backup">Restore Backup</option>
                     </select>
                     <select id="actionFilter" class="form-select form-select-sm" style="min-width:180px">
                         <option value="">All Actions</option>
                         <option value="create">Create</option>
                         <option value="update">Update</option>
-                        <option value="delete">Delete</option>
-                        <option value="status">Status</option>
+                        <option value="status">Status Change</option>
                         <option value="reset_password">Reset Password</option>
                     </select>
                 </div>
@@ -319,7 +325,17 @@
             const params = new URLSearchParams();
             if (q) params.set('q', q);
             if (entity) params.set('entity_type', entity);
-            if (action) params.set('action', action);
+            if (action) {
+                if (action === 'status') {
+                    if (!entity) params.set('entity_type', 'user_status');
+                    params.set('action', 'update');
+                } else if (action === 'reset_password') {
+                    if (!entity) params.set('entity_type', 'user_password');
+                    params.set('action', 'update');
+                } else {
+                    params.set('action', action);
+                }
+            }
             if (all) params.set('all', '1');
             params.set('limit', '100');
 
@@ -409,7 +425,7 @@
                     <td>${escapeHtml(l.id)}</td>
                     <td class="js-live-time" data-ts="${escapeHtml(l.created_at || '')}" title="${escapeHtml(formatRelativeTime(l.created_at || ''))}">${escapeHtml(whenAbs)}</td>
                     <td>${escapeHtml(l.actor_name || 'System')}</td>
-                    <td>${escapeHtml(prettyAction(l.action || ''))}</td>
+                    <td>${escapeHtml(displayActionLabel(l.action || '', l.entity_type || ''))}</td>
                     <td>${escapeHtml(l.entity_type || '')}</td>
                     <td>${escapeHtml(l.entity_id || '')}</td>
                     <td class="text-muted small">${escapeHtml(l.summary || '')}</td>
@@ -504,14 +520,16 @@
             return dt.toLocaleString();
         }
 
-        function prettyAction(a) {
+        function displayActionLabel(action, entityType) {
+            const et = String(entityType || '').trim();
+            if (et === 'user_password') return 'Reset Password';
+            if (et === 'user_status') return 'Status Change';
             const map = {
                 'create': 'Create',
                 'update': 'Update',
-                'delete': 'Delete',
-                'status': 'Status Change',
-                'reset_password': 'Reset Password'
+                'delete': 'Delete'
             };
+            const a = String(action || '').trim();
             return map[a] || a;
         }
 

@@ -44,12 +44,16 @@ class StaffTaskController extends Controller
 
         try {
             $warehouseId = $this->request->getGet('warehouse_id');
+            // Default to session warehouse if not provided by request
+            if (empty($warehouseId)) {
+                $warehouseId = session('warehouse_id') ?: null;
+            }
             
             // Get only truly pending tasks (not scanned or completed)
             $tasks = $this->staffTaskModel->where('status', 'Pending');
             
             if ($warehouseId) {
-                $tasks = $tasks->where('warehouse_id', $warehouseId);
+                $tasks = $tasks->where('warehouse_id', (int)$warehouseId);
             }
             
             $tasks = $tasks->orderBy('created_at', 'ASC')->findAll();
@@ -139,12 +143,50 @@ class StaffTaskController extends Controller
             if ($task['movement_type'] === 'IN') {
                 // Inbound - add to stock
                 $newStock = $currentStock + $taskQuantity;
-            } elseif ($task['movement_type'] === 'OUT') {
+            } elseif ($task['movement_type'] === 'OUT' || $task['movement_type'] === 'OUTBOUND') {
                 // Outbound - remove from stock
                 $newStock = $currentStock - $taskQuantity;
                 
                 if ($newStock < 0) {
                     throw new \Exception('Insufficient stock for outbound operation');
+                }
+                
+                // Check if this is part of a warehouse request
+                // Reference format: OUT-WR-YYYYMMDD-XXXX or similar
+                if (strpos($task['reference_no'], 'OUT-WR') !== false || strpos($task['reference_no'], 'OUT-') === 0) {
+                    // This is an outbound for a warehouse request
+                    // Find the outbound receipt and warehouse request
+                    $outboundReceiptModel = new \App\Models\OutboundReceiptModel();
+                    $warehouseRequestModel = new \App\Models\WarehouseRequestModel();
+                    $inboundReceiptModel = new \App\Models\InboundReceiptModel();
+                    
+                    // Find outbound receipt by reference
+                    $outboundReceipt = $outboundReceiptModel->where('reference_no', $task['reference_no'])->first();
+                    
+                    if ($outboundReceipt) {
+                        // Check if all tasks for this outbound are completed
+                        $allTasks = $this->staffTaskModel->where('reference_no', $task['reference_no'])->findAll();
+                        $pendingTasks = array_filter($allTasks, function($t) use ($taskId) {
+                            return $t['status'] === 'Pending' && $t['id'] != $taskId;
+                        });
+                        
+                        // If this is the last task, update statuses
+                        if (empty($pendingTasks)) {
+                            // Update outbound receipt status to SCANNED
+                            $outboundReceiptModel->update($outboundReceipt['id'], ['status' => 'SCANNED']);
+                            
+                            // Find and update warehouse request status to SCANNED and DELIVERING
+                            $warehouseRequest = $warehouseRequestModel->where('outbound_receipt_id', $outboundReceipt['id'])->first();
+                            if ($warehouseRequest) {
+                                $warehouseRequestModel->updateStatus($warehouseRequest['id'], 'DELIVERING');
+                                
+                                // Update inbound receipt status to DELIVERING
+                                if ($warehouseRequest['inbound_receipt_id']) {
+                                    $inboundReceiptModel->update($warehouseRequest['inbound_receipt_id'], ['status' => 'DELIVERING']);
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -176,7 +218,8 @@ class StaffTaskController extends Controller
                 'task_id' => $taskId,
                 'old_stock' => $currentStock,
                 'new_stock' => $newStock,
-                'movement_type' => $task['movement_type']
+                'movement_type' => $task['movement_type'],
+                'redirect_to_delivery' => ($task['movement_type'] === 'OUTBOUND' || $task['movement_type'] === 'OUT') && empty($pendingTasks ?? [])
             ]);
 
         } catch (\Exception $e) {
@@ -293,7 +336,8 @@ class StaffTaskController extends Controller
         }
 
         try {
-            $stats = $this->staffTaskModel->getTaskStats();
+            $warehouseId = session('warehouse_id') ?: null;
+            $stats = $this->staffTaskModel->getTaskStats($warehouseId);
             return $this->response->setJSON($stats);
         } catch (\Exception $e) {
             log_message('error', 'Failed to get task statistics: ' . $e->getMessage());
@@ -363,19 +407,79 @@ class StaffTaskController extends Controller
                 ]);
             }
 
-            // Task found - move to recent scans without updating inventory yet
+            // If this task is an OUT (export) task, validate available stock now
+            $taskQty = isset($task['quantity']) ? (int)$task['quantity'] : 1;
+            $movementType = strtoupper($task['movement_type'] ?? 'IN');
+
+            if ($movementType === 'OUT') {
+                $available = isset($inventoryItem['quantity']) ? (int)$inventoryItem['quantity'] : 0;
+                if ($available < $taskQty) {
+                    // Insufficient stock: mark task as RED STOCK and mark related stock movement (if any)
+                    try {
+                        $this->staffTaskModel->update($task['id'], ['status' => 'RED STOCK']);
+                        if (!empty($task['movement_id'])) {
+                            $this->stockMovementModel->updateMovementStatus($task['movement_id'], 'red_stock');
+                        }
+                    } catch (\Exception $e) {
+                        log_message('error', 'Failed to mark RED STOCK: ' . $e->getMessage());
+                    }
+
+                    return $this->response->setStatusCode(409)->setJSON([
+                        'success' => false,
+                        'error' => 'Insufficient stock',
+                        'message' => 'Insufficient stock for export - task marked as RED STOCK',
+                        'task_id' => $task['id'] ?? null,
+                        'movement_id' => $task['movement_id'] ?? null,
+                    ]);
+                }
+            }
+
+            // Stock is sufficient or task is inbound: move to recent scans without updating inventory yet
             $scan = $this->recentScanModel->upsertScan(
-                $userId, 
-                $warehouseId, 
-                $barcode, 
-                $inventoryItem['name'], 
-                $task['movement_type'], 
-                $task['quantity'], 
+                $userId,
+                $warehouseId,
+                $barcode,
+                $inventoryItem['name'],
+                $task['movement_type'],
+                $task['quantity'],
                 $inventoryItem['id']
             );
 
             // Mark the task as "scanned" but not completed
             $this->staffTaskModel->update($task['id'], ['status' => 'Scanned']);
+
+            // If this is an outbound task, create a picking task for picking & packing workflow
+            if ($movementType === 'OUT') {
+                $db = \Config\Database::connect();
+                
+                // Find the outbound receipt using reference_no
+                $outboundReceipt = $db->table('outbound_receipts')
+                    ->where('reference_no', $task['reference_no'])
+                    ->get()
+                    ->getRowArray();
+
+                if ($outboundReceipt) {
+                    // Check if a picking task already exists
+                    $existingPickingTask = $db->table('picking_packing_tasks')
+                        ->where('receipt_id', $outboundReceipt['id'])
+                        ->where('item_id', $inventoryItem['id'])
+                        ->where('task_type', 'PICKING')
+                        ->get()
+                        ->getRowArray();
+
+                    if (!$existingPickingTask) {
+                        // Create picking task
+                        $db->table('picking_packing_tasks')->insert([
+                            'receipt_id' => $outboundReceipt['id'],
+                            'item_id' => $inventoryItem['id'],
+                            'task_type' => 'PICKING',
+                            'status' => 'Pending',
+                            'created_at' => date('Y-m-d H:i:s'),
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ]);
+                    }
+                }
+            }
 
             return $this->response->setJSON([
                 'success' => true,
@@ -591,15 +695,14 @@ class StaffTaskController extends Controller
                     'company_name' => 'WeBuild Construction',
                     'movement_type' => $movement,
                     'location' => 'Warehouse',
-                    'status' => 'completed',
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
+                    'status' => 'completed'
                 ];
 
                 $this->stockMovementModel->insert($movementData);
 
                 // Check if this scan was from a task and complete the task
-                $relatedTask = $this->staffTaskModel->where('item_id', $itemId)
+                $relatedTask = $this->staffTaskModel->select('*')
+                                                   ->where('item_id', $itemId)
                                                    ->where('warehouse_id', $scan['warehouse_id'])
                                                    ->where('status', 'Scanned')
                                                    ->where('movement_type', strtoupper($movement))
@@ -620,9 +723,89 @@ class StaffTaskController extends Controller
                         $this->stockMovementModel->updateMovementStatus($relatedTask['movement_id'], 'completed');
                     }
 
+                    // If this is an outbound task, create a picking task
+                    if (strtoupper($movement) === 'OUT') {
+                        // First try to find outbound receipt by reference_no
+                        $outboundReceipt = $db->table('outbound_receipts')
+                            ->where('reference_no', $relatedTask['reference_no'])
+                            ->get()
+                            ->getRowArray();
+
+                        // If not found by reference, find any approved outbound receipt with this item
+                        if (!$outboundReceipt) {
+                            $outboundReceipt = $db->table('outbound_receipts or')
+                                ->select('or.*')
+                                ->join('outbound_receipt_items ori', 'ori.receipt_id = or.id')
+                                ->where('or.status', 'Approved')
+                                ->where('or.warehouse_id', $scan['warehouse_id'])
+                                ->where('ori.item_id', $itemId)
+                                ->orderBy('or.created_at', 'ASC')
+                                ->get()
+                                ->getRowArray();
+                        }
+
+                        // For manager-created outbound tasks (without sales orders), create a manual outbound receipt
+                        if (!$outboundReceipt && isset($relatedTask['reference_no']) && strpos($relatedTask['reference_no'], 'OUT-') === 0) {
+                            // Create a manual outbound receipt for this manager-created outbound task
+                            $receiptData = [
+                                'reference_no' => $relatedTask['reference_no'],
+                                'customer_name' => 'Manual Outbound',
+                                'warehouse_id' => $scan['warehouse_id'],
+                                'status' => 'Approved',
+                                'total_items' => 1,
+                                'approved_by' => $relatedTask['assigned_by'] ?? null,
+                                'approved_at' => date('Y-m-d H:i:s'),
+                                'created_at' => $relatedTask['created_at'] ?? date('Y-m-d H:i:s'),
+                                'updated_at' => date('Y-m-d H:i:s')
+                            ];
+                            $db->table('outbound_receipts')->insert($receiptData);
+                            $receiptId = $db->insertID();
+
+                            // Create outbound receipt item
+                            $db->table('outbound_receipt_items')->insert([
+                                'receipt_id' => $receiptId,
+                                'item_id' => $itemId,
+                                'warehouse_id' => $scan['warehouse_id'],
+                                'quantity' => $qty
+                            ]);
+
+                            // Now use this newly created receipt (include reference_no for logging)
+                            $outboundReceipt = ['id' => $receiptId, 'reference_no' => $relatedTask['reference_no']];
+                            log_message('info', "Created manual outbound receipt #{$receiptId} for task reference {$relatedTask['reference_no']}");
+                        }
+
+                        if ($outboundReceipt) {
+                            // Check if picking task already exists
+                            $existingPickingTask = $db->table('picking_packing_tasks')
+                                ->where('receipt_id', $outboundReceipt['id'])
+                                ->where('item_id', $itemId)
+                                ->where('task_type', 'PICKING')
+                                ->get()
+                                ->getRowArray();
+
+                            if (!$existingPickingTask) {
+                                // Create picking task for the picking & packing workflow
+                                $db->table('picking_packing_tasks')->insert([
+                                    'receipt_id' => $outboundReceipt['id'],
+                                    'item_id' => $itemId,
+                                    'task_type' => 'PICKING',
+                                    'status' => 'Pending',
+                                    'created_at' => date('Y-m-d H:i:s'),
+                                    'updated_at' => date('Y-m-d H:i:s')
+                                ]);
+                                
+                                $refNo = $outboundReceipt['reference_no'] ?? 'N/A';
+                                log_message('info', "Created picking task for receipt {$outboundReceipt['id']} ({$refNo}), item {$itemId}");
+                            }
+                        } else {
+                            $refNo = $relatedTask['reference_no'] ?? 'N/A';
+                            log_message('warning', "No outbound receipt found for item {$itemId}, reference_no: {$refNo}");
+                        }
+                    }
+
                     $taskUpdates[] = [
                         'task_id' => $relatedTask['id'],
-                        'reference_no' => $relatedTask['reference_no']
+                        'reference_no' => $relatedTask['reference_no'] ?? 'N/A'
                     ];
                 }
 
@@ -645,7 +828,9 @@ class StaffTaskController extends Controller
             $db->transComplete();
 
             if ($db->transStatus() === false) {
-                throw new \Exception('Transaction failed during saveAndUpdate');
+                $error = $db->error();
+                log_message('error', 'Transaction failed in saveAndUpdate. DB Error: ' . json_encode($error));
+                throw new \Exception('Transaction failed during saveAndUpdate. DB Error: ' . ($error['message'] ?? 'Unknown'));
             }
 
             return $this->response->setJSON([
@@ -656,8 +841,10 @@ class StaffTaskController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            $db->transComplete();
-            log_message('error', 'Save and update scans failed: ' . $e->getMessage());
+            if ($db->transStatus() !== false) {
+                $db->transRollback();
+            }
+            log_message('error', 'Save and update scans failed: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
             return $this->response->setStatusCode(500)->setJSON(['error' => 'Failed to process scans: ' . $e->getMessage()]);
         }
     }

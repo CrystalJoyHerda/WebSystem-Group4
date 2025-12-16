@@ -4,6 +4,25 @@
      <meta charset="utf-8">
      <meta name="viewport" content="width=device-width, initial-scale=1">
      <title>We Build - Top Management Dashboard</title>
+     <script>
+         (function () {
+             try {
+                 var lockedTheme = document.documentElement.getAttribute('data-theme-lock');
+                 if (lockedTheme === 'dark' || lockedTheme === 'light') {
+                     document.documentElement.setAttribute('data-theme', lockedTheme);
+                     document.documentElement.setAttribute('data-bs-theme', lockedTheme);
+                     return;
+                 }
+                 var t = null;
+                 try { t = localStorage.getItem('theme'); } catch (e) { t = null; }
+                 if (!t) {
+                     t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+                 }
+                 document.documentElement.setAttribute('data-theme', t);
+                 document.documentElement.setAttribute('data-bs-theme', t);
+             } catch (e) {}
+         })();
+     </script>
      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
      <link href="<?= base_url('css/site.css') ?>" rel="stylesheet">
@@ -253,6 +272,7 @@
             <a href="<?= site_url('top-management/finance') ?>" class="menu-item <?= ($path === 'top-management/finance') ? 'active' : '' ?>">Finance</a>
             <a href="<?= site_url('top-management/reports') ?>" class="menu-item <?= ($path === 'top-management/reports') ? 'active' : '' ?>">Reports</a>
             <a href="<?= site_url('top-management/audit') ?>" class="menu-item <?= ($path === 'top-management/audit') ? 'active' : '' ?>">Audit & Compliance</a>
+            <a href="<?= site_url('top-management/profile') ?>" class="menu-item <?= ($path === 'top-management/profile') ? 'active' : '' ?>">My Profile</a>
         </div>
          <button class="logout-btn" onclick="window.location.href='<?= site_url('logout') ?>'">Logout</button>
      </div>

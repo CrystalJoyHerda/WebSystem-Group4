@@ -8,31 +8,6 @@ class Auth extends Controller
     protected $db;
     protected $builder;
 
-    private function getSystemSettingInt(string $key, int $default): int
-    {
-        $db = \Config\Database::connect();
-        if (! $db->tableExists('system_settings')) {
-            return $default;
-        }
-
-        $row = $db->table('system_settings')->select('setting_value')->where('setting_key', $key)->get()->getRowArray();
-        if (! $row) {
-            return $default;
-        }
-
-        $val = $row['setting_value'] ?? null;
-        if ($val === null) {
-            return $default;
-        }
-
-        $val = trim((string) $val);
-        if ($val === '' || ! is_numeric($val)) {
-            return $default;
-        }
-
-        return (int) $val;
-    }
-
     private function normalizeRole($role): string
     {
         $role = (string) ($role ?? '');
@@ -65,10 +40,6 @@ class Auth extends Controller
         }
 
         if ($this->request->is('post')) {
-            $minLen = $this->getSystemSettingInt('auth.password_min_length', 6);
-            if ($minLen < 6) {
-                $minLen = 6;
-            }
             $rules = [
                'name' => [
                     'label'  => 'Full Name',
@@ -87,14 +58,14 @@ class Auth extends Controller
                 ],
                 'password' => [
                     'label'  => 'Password',
-                    'rules'  => 'required|min_length[' . $minLen . ']|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
+                    'rules'  => 'required|min_length[6]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
                     'errors' => [
                         'regex_match' => 'The {field} must not contain the symbols * or ".'
                     ]
                 ],
                 'password_confirm' => [
                     'label'  => 'Confirm Password',
-                    'rules'  => 'required|min_length[' . $minLen . ']|matches[password]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
+                    'rules'  => 'required|min_length[6]|matches[password]|max_length[255]|regex_match[/^(?!.*[\*"]).+$/]', // Password must be valid and not contain certain symbols
                     'errors' => [
                         'regex_match' => 'The {field} must not contain the symbols * or ".'
                     ]
@@ -132,10 +103,10 @@ class Auth extends Controller
         helper(['form']);
         $data = [];
 
-        //  if(session()->get('isLoggedIn')) {
-        //     return redirect()->to(base_url('dashboard'));
+         if(session()->get('isLoggedIn')) {
+            return redirect()->to(base_url('dashboard'));
 
-        // }
+        }
 
         if ($this->request->is('post')) {
             $rules = [
@@ -165,34 +136,7 @@ class Auth extends Controller
                     ->get()
                     ->getRowArray();
 
-                $lockoutAttempts = $this->getSystemSettingInt('auth.lockout_attempts', 5);
-                if ($lockoutAttempts < 0) {
-                    $lockoutAttempts = 0;
-                }
-                $lockoutMinutes = $this->getSystemSettingInt('auth.lockout_minutes', 15);
-                if ($lockoutMinutes < 0) {
-                    $lockoutMinutes = 0;
-                }
-
-                $db = \Config\Database::connect();
-                $hasLockout = $db->fieldExists('failed_login_attempts', 'users') && $db->fieldExists('lockout_until', 'users');
-                if ($hasLockout && $user && ! empty($user['lockout_until'])) {
-                    $untilTs = strtotime((string) $user['lockout_until']);
-                    if ($untilTs !== false && time() < $untilTs) {
-                        session()->setFlashdata('error', 'Account temporarily locked. Please try again later.');
-                        return view('auth/login', $data);
-                    }
-                }
-
-                if ($user && array_key_exists('is_active', $user) && (int) $user['is_active'] === 0) {
-                    session()->setFlashdata('error', 'Your account has been disabled. Please contact the administrator.');
-                } elseif ($user && password_verify($password, $user['password'])) {
-                    if ($hasLockout && isset($user['id'])) {
-                        $this->db->table('users')->where('id', (int) $user['id'])->update([
-                            'failed_login_attempts' => 0,
-                            'lockout_until' => null,
-                        ]);
-                    }
+                if ($user && password_verify($password, $user['password'])) {
                     session()->set([
                         'userID'     => $user['id'],
                         'name'       => $user['name'],
@@ -200,62 +144,52 @@ class Auth extends Controller
                         'role'       => $user['role'],
                         'isLoggedIn' => true
                     ]);
-
-                    session()->setFlashdata('success', 'Welcome back, ' . $user['name'] . '!');
-
-                    $db = \Config\Database::connect();
-                    if ($db->tableExists('audit_logs')) {
-                        $userAgent = $this->request->getUserAgent();
-                        $ua = '';
-                        if ($userAgent && method_exists($userAgent, 'getAgentString')) {
-                            $ua = (string) $userAgent->getAgentString();
-                        } elseif ($userAgent) {
-                            $ua = (string) $userAgent;
+                    // Determine warehouse assignment for the user in a safe order:
+                    // 1) Prefer `warehouse_id` column on the `users` row (if present)
+                    // 2) Fall back to `user_warehouses` mapping table (if present)
+                    // 3) Default to warehouse 1 (Main Warehouse)
+                    try {
+                        if (isset($user['warehouse_id']) && !empty($user['warehouse_id'])) {
+                            // Use explicit warehouse assigned on the users table
+                            session()->set('warehouse_id', (int)$user['warehouse_id']);
+                        } else {
+                            $db = \Config\Database::connect();
+                            if ($db->tableExists('user_warehouses')) {
+                                $uw = $db->table('user_warehouses')->where('user_id', $user['id'])->get()->getRowArray();
+                                if ($uw && isset($uw['warehouse_id'])) {
+                                    session()->set('warehouse_id', (int)$uw['warehouse_id']);
+                                } else {
+                                    session()->set('warehouse_id', 1);
+                                }
+                            } else {
+                                // Mapping table not present; default to Main Warehouse
+                                session()->set('warehouse_id', 1);
+                            }
                         }
-
-                        $db->table('audit_logs')->insert([
-                            'actor_user_id' => (int) $user['id'],
-                            'action' => 'login',
-                            'entity_type' => 'auth',
-                            'entity_id' => (int) $user['id'],
-                            'before_json' => null,
-                            'after_json' => json_encode(['role' => $user['role'] ?? null]),
-                            'ip_address' => $this->request->getIPAddress(),
-                            'user_agent' => $ua,
-                            'created_at' => date('Y-m-d H:i:s'),
-                        ]);
+                    } catch (\Throwable $e) {
+                        // If anything fails, set a safe default and continue
+                        session()->set('warehouse_id', 1);
+                        if (function_exists('log_message')) {
+                            log_message('error', '[Auth::login] warehouse lookup failed: ' . $e->getMessage());
+                        }
                     }
-                    
-                    // Debug: Log the user role to help troubleshoot
-                    log_message('info', 'User role: ' . $user['role']);
-                    
+
+                    session()->setFlashdata('success', value: 'Welcome back, ' . $user['name'] . '!');
                     // Redirect based on role
                     if ($this->isItAdminRole($user['role'])) {
-                        return redirect()->to('dashboard/admin');
+                        return redirect()->to(base_url('admin'));
                     } elseif ($this->normalizeRole($user['role']) === 'topmanagement') {
-                        return redirect()->to('top-management');
+                        return redirect()->to(base_url('top-management'));
                     } elseif ($user['role'] === 'manager') {
-                        return redirect()->to('dashboard/manager');
+                        return redirect()->to(base_url('dashboard/manager'));
                     } elseif ($user['role'] === 'staff') {
-                        return redirect()->to('dashboard/staff');
+                        return redirect()->to(base_url('dashboard/staff'));
                     } elseif ($user['role'] === 'viewer') {
-                        return redirect()->to('dashboard/viewer');
-                    } else {
-                        // Log unexpected role for debugging
-                        log_message('warning', 'Unexpected user role: ' . $user['role']);
-                        return redirect()->to('dashboard/manager');
+                        return redirect()->to(base_url('dashboard/viewer'));
                     }
+
+                    return redirect()->to(base_url('dashboard'));
                 } else {
-                    if ($hasLockout && $user && isset($user['id']) && $lockoutAttempts > 0) {
-                        $attempts = isset($user['failed_login_attempts']) ? (int) $user['failed_login_attempts'] : 0;
-                        $attempts++;
-                        $update = ['failed_login_attempts' => $attempts];
-                        if ($attempts >= $lockoutAttempts && $lockoutMinutes > 0) {
-                            $update['lockout_until'] = date('Y-m-d H:i:s', time() + ($lockoutMinutes * 60));
-                            $update['failed_login_attempts'] = 0;
-                        }
-                        $this->db->table('users')->where('id', (int) $user['id'])->update($update);
-                    }
                     session()->setFlashdata('error', 'Invalid email or password.');
                 }
             } else {
@@ -268,29 +202,6 @@ class Auth extends Controller
 
     public function logout()
     {
-        $db = \Config\Database::connect();
-        if ($db->tableExists('audit_logs') && session()->get('userID')) {
-            $userAgent = $this->request->getUserAgent();
-            $ua = '';
-            if ($userAgent && method_exists($userAgent, 'getAgentString')) {
-                $ua = (string) $userAgent->getAgentString();
-            } elseif ($userAgent) {
-                $ua = (string) $userAgent;
-            }
-
-            $uid = (int) session()->get('userID');
-            $db->table('audit_logs')->insert([
-                'actor_user_id' => $uid,
-                'action' => 'logout',
-                'entity_type' => 'auth',
-                'entity_id' => $uid,
-                'before_json' => null,
-                'after_json' => null,
-                'ip_address' => $this->request->getIPAddress(),
-                'user_agent' => $ua,
-                'created_at' => date('Y-m-d H:i:s'),
-            ]);
-        }
         session()->destroy();
         return redirect()->to(base_url('login'));
     }

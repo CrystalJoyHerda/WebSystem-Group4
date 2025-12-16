@@ -31,9 +31,13 @@ $routes->match(['get', 'post'], 'register', 'Auth::register');
 // Generic dashboard route — redirects to manager or staff dashboard based on session
 $routes->get('dashboard', 'Dashboard::index');
 $routes->get('dashboard/manager', 'Dashboard::manager');
+$routes->get('dashboard/manager/warehouse/(:num)', 'Dashboard::warehouseInventory/$1');
 $routes->get('dashboard/staff', 'Dashboard::staff');
 $routes->get('dashboard/viewer', 'Dashboard::viewer');
 $routes->get('dashboard/admin', 'Dashboard::admin');
+// Warehouse 2 dashboards
+$routes->get('dashboard/warehouse2/manager', 'Warehouse2Dashboard::manager');
+$routes->get('dashboard/warehouse2/staff', 'Warehouse2Dashboard::staff');
 $routes->get('debug/session', 'Debug::session');
 $routes->match(['get','post'], 'auth/dbfetch', 'Auth::dbfetch');
 // Inventory page for managers
@@ -62,9 +66,10 @@ $routes->get('dashboard/staff/barcode', function () {
     return view('dashboard/staff/barcodescan');
 });
 
-// Staff tasks (Warehouse Staff barcode workflow)
-$routes->get('api/staff-tasks/pending', 'StaffTaskController::getPendingTasks');
-$routes->post('api/staff-tasks/scan-item', 'StaffTaskController::scanTaskItem');
+// Warehouse2 staff barcode route (direct view for convenience)
+$routes->get('dashboard/warehouse2/staff/barcode', function () {
+    return view('warehouse2/staff_dashboard/barcodescan');
+});
 
 // Warehouses
 $routes->get('dashboard/manager/warehouses', 'WarehouseController::index');
@@ -197,10 +202,12 @@ $routes->get('api/assets/(:num)/history', 'AssetController::history/$1');
 $routes->post('api/jobs', 'JobController::enqueue');
 $routes->get('api/jobs', 'JobController::index');
 
-
 // Stock Movement and Staff Task Integration Routes
 $routes->post('stockmovements/approveInboundReceipt', 'stockmovements::approveInboundReceipt');
 $routes->post('stockmovements/approveOutboundReceipt', 'stockmovements::approveOutboundReceipt');
+$routes->post('stockmovements/createOutbound', 'stockmovements::createOutbound');
+
+// Debug routes (temporary) - removed
 $routes->get('stockmovements/getMovementHistory', 'stockmovements::getMovementHistory');
 $routes->get('stockmovements/getPendingMovements', 'stockmovements::getPendingMovements');
 $routes->get('stockmovements/getPendingInboundReceipts', 'stockmovements::getPendingInboundReceipts');
@@ -224,57 +231,21 @@ $routes->get('api/staff-tasks/history', 'StaffTaskController::getTaskHistory');
 $routes->get('seed-staff-tasks-test-data', 'TestDataController::seedStaffTasksTestData');
 $routes->get('clear-staff-tasks-test-data', 'TestDataController::clearStaffTasksTestData');
 
-// Account Payable Clerk Routes
-// Accounts Payable Clerk Routes
-$routes->get('dashboard/accounts_payable', 'AccountsPayableController::dashboard');
-$routes->get('dashboard/accounts_payable/invoices', 'AccountsPayableController::invoices');
-$routes->get('dashboard/accounts_payable/payments', 'AccountsPayableController::payments');
-$routes->get('dashboard/accounts_payable/vendors', 'AccountsPayableController::vendors');
-$routes->get('dashboard/accounts_payable/reports', 'AccountsPayableController::reports');
-/*
--$routes->get('dashboard/accounts_payable/dashboard', 'AccountsPayableController::dashboard');
--$routes->get('dashboard/accounts_payable/invoices', 'AccountsPayableController::invoices');
--$routes->get('dashboard/accounts_payable/invoices/create', 'AccountsPayableController::createInvoice');
-$routes->get('dashboard/accounts_payable/invoices/(:num)', 'AccountsPayableController::viewInvoice/$1');
-$routes->get('dashboard/accounts_payable/invoices/(:num)/edit', 'AccountsPayableController::editInvoice/$1');
--$routes->get('dashboard/accounts_payable/vendors', 'AccountsPayableController::vendors');
-$routes->get('dashboard/accounts_payable/vendors/create', 'AccountsPayableController::createVendor');
-$routes->get('dashboard/accounts_payable/vendors/(:num)', 'AccountsPayableController::viewVendor/$1');
-$routes->get('dashboard/accounts_payable/vendors/(:num)/edit', 'AccountsPayableController::editVendor/$1');
--$routes->get('dashboard/accounts_payable/payments', 'AccountsPayableController::payments');
-$routes->get('dashboard/accounts_payable/payments/create', 'AccountsPayableController::createPayment');
-$routes->get('dashboard/accounts_payable/payments/create/(:num)', 'AccountsPayableController::createPaymentForInvoice/$1');
--$routes->get('dashboard/accounts_payable/reports', 'AccountsPayableController::reports');
-*/
+// Warehouse Request Routes
+$routes->post('api/warehouse-requests/create', 'WarehouseRequestController::create');
+$routes->get('api/warehouse-requests/pending', 'WarehouseRequestController::getPendingRequests');
+$routes->post('api/warehouse-requests/approve/(:num)', 'WarehouseRequestController::approve/$1');
+$routes->get('api/warehouse-requests/deliveries', 'WarehouseRequestController::getDeliveries');
+$routes->post('api/warehouse-requests/mark-delivered/(:num)', 'WarehouseRequestController::markDelivered/$1');
+$routes->get('dashboard/staff/deliveries', 'WarehouseRequestController::deliveryPage');
 
-// Accounts Payable API Routes
-$routes->get('api/accounts-payable/stats', 'AccountsPayableController::getStats');
-$routes->get('api/accounts-payable/recent-invoices', 'AccountsPayableController::getRecentInvoices');
-$routes->get('api/accounts-payable/payment-alerts', 'AccountsPayableController::getPaymentAlerts');
-$routes->get('api/accounts-payable/invoices', 'AccountsPayableController::getInvoices');
-$routes->get('api/accounts-payable/invoices/(:num)', 'AccountsPayableController::getInvoice/$1');
-$routes->post('api/accounts-payable/invoices/(:num)/approve', 'AccountsPayableController::approveInvoice/$1');
-$routes->get('api/accounts-payable/invoices/approved', 'AccountsPayableController::getApprovedInvoices');
-$routes->get('api/accounts-payable/vendors', 'AccountsPayableController::getVendors');
-$routes->get('api/accounts-payable/vendors/list', 'AccountsPayableController::getVendorsList');
-$routes->get('api/accounts-payable/vendors/categories', 'AccountsPayableController::getVendorCategories');
-$routes->get('api/accounts-payable/vendors/(:num)', 'AccountsPayableController::getVendor/$1');
-$routes->post('api/accounts-payable/vendors', 'AccountsPayableController::createVendorApi');
-$routes->get('api/accounts-payable/payments/stats', 'AccountsPayableController::getPaymentStats');
-$routes->get('api/accounts-payable/payments', 'AccountsPayableController::getPayments');
-$routes->get('api/accounts-payable/payments/scheduled', 'AccountsPayableController::getScheduledPayments');
-$routes->get('api/accounts-payable/payments/calendar', 'AccountsPayableController::getPaymentCalendar');
-$routes->post('api/accounts-payable/payments/process', 'AccountsPayableController::processPayment');
-$routes->get('api/accounts-payable/invoices/export', 'AccountsPayableController::exportInvoices');
-$routes->get('api/accounts-payable/reports/overview', 'AccountsPayableController::getOverviewReport');
-$routes->get('api/accounts-payable/reports/aging', 'AccountsPayableController::getAgingReport');
-$routes->get('api/accounts-payable/reports/vendor-analysis', 'AccountsPayableController::getVendorAnalysis');
-$routes->get('api/accounts-payable/reports/payment-history', 'AccountsPayableController::getPaymentHistory');
-$routes->get('api/accounts-payable/reports/cashflow', 'AccountsPayableController::getCashflowReport');
-$routes->get('api/accounts-payable/reports/export', 'AccountsPayableController::exportReport');
-
-//procurement
-$routes->get('procurement', 'Home::procurement');
+// Picking and Packing Routes
+$routes->get('dashboard/staff/picking-packing', 'PickingPackingController::index');
+$routes->get('api/picking/tasks', 'PickingPackingController::getPickingTasks');
+$routes->post('api/picking/start', 'PickingPackingController::startPicking');
+$routes->post('api/picking/complete', 'PickingPackingController::completePicking');
+$routes->get('api/packing/tasks', 'PickingPackingController::getPackingTasks');
+$routes->post('api/packing/complete', 'PickingPackingController::completePacking');
 
 /*
  * --------------------------------------------------------------------

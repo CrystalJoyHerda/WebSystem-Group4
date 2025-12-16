@@ -959,6 +959,18 @@ class Admin extends Controller
         $action = trim((string) ($this->request->getGet('action') ?? ''));
         $all = (int) ($this->request->getGet('all') ?? 0);
 
+        if ($action === 'status') {
+            $action = 'update';
+            if ($entityType === '') {
+                $entityType = 'user_status';
+            }
+        } elseif ($action === 'reset_password') {
+            $action = 'update';
+            if ($entityType === '') {
+                $entityType = 'user_password';
+            }
+        }
+
         $builder = $db->table('audit_logs a')
             ->select('a.id, a.warehouse_id, a.actor_user_id, a.action, a.entity_type, a.entity_id, a.before_json, a.after_json, a.ip_address, a.user_agent, a.created_at, u.name as actor_name, u.email as actor_email')
             ->join('users u', 'u.id = a.actor_user_id', 'left')

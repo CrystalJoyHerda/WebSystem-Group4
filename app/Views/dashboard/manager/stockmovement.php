@@ -100,7 +100,12 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
 
                         <div class="card card-move">
                             <div class="card-body">
-                                <h5 class="card-title">Outbound Shipments</h5>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="card-title mb-0">Outbound Shipments</h5>
+                                    <div>
+                                        <button id="btnCreateOutbound" class="btn btn-sm btn-primary">Create Outbound</button>
+                                    </div>
+                                </div>
                                 <div class="outbound-list mt-3">
                                     <ul class="list-unstyled mb-0" id="outbound-receipts-list">
                                         <li class="text-muted text-center py-3">Loading outbound receipts...</li>
@@ -333,15 +338,21 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                 const tbody = document.querySelector('.movement-list tbody');
                 if (!tbody || !movements.length) return;
 
-                tbody.innerHTML = movements.slice(0, 10).map(movement => `
-                    <tr>
+                tbody.innerHTML = movements.slice(0, 10).map(movement => {
+                    const isRed = movement.status === 'red_stock' || (movement.status && movement.status.toLowerCase() === 'red_stock');
+                    const rowClass = isRed ? 'table-danger' : '';
+                    const statusBadge = isRed ? ' <span class="badge bg-danger ms-1">RED STOCK</span>' : '';
+
+                    return `
+                    <tr class="${rowClass}">
                         <td>${formatDate(movement.created_at || new Date())}</td>
-                        <td>${movement.movement_type === 'in' ? 'Inbound' : 'Outbound'}</td>
+                        <td>${movement.movement_type === 'in' ? 'Inbound' : 'Outbound'}${statusBadge}</td>
                         <td>${movement.item_sku || 'N/A'}</td>
                         <td class="text-end">${movement.quantity}</td>
                         <td>${movement.order_number}</td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
             }
 
             // Utility function to format date
@@ -430,13 +441,349 @@ $role = session() ? session()->get('role') ?? 'User' : 'User';
                 `).join('');
             }
 
+            // Load pending warehouse requests
+            async function loadPendingWarehouseRequests() {
+                try {
+                    // Get current warehouse ID (you may need to set this based on logged-in user's warehouse)
+                    const warehouseId = 2; // TODO: Get from session or user data
+                    
+                    const response = await fetch(`<?= site_url('api/warehouse-requests/pending') ?>?warehouse_id=${warehouseId}`);
+                    if (response.ok) {
+                        const requests = await response.json();
+                        updateWarehouseRequestsList(requests);
+                    } else {
+                        throw new Error('Failed to load warehouse requests');
+                    }
+                } catch (error) {
+                    console.error('Failed to load warehouse requests:', error);
+                    document.getElementById('warehouse-requests-list').innerHTML = 
+                        '<li class="text-danger text-center py-3">Failed to load requests</li>';
+                }
+            }
+
+            // Update warehouse requests list display
+            function updateWarehouseRequestsList(requests) {
+                const container = document.getElementById('warehouse-requests-list');
+                
+                if (!requests || requests.length === 0) {
+                    container.innerHTML = '<li class="text-muted text-center py-3">No pending requests</li>';
+                    return;
+                }
+
+                container.innerHTML = requests.map(request => `
+                    <li class="d-flex justify-content-between align-items-start border-bottom pb-2 mb-2">
+                        <div>
+                            <strong>${request.reference_no}</strong><br>
+                            <small>From: ${request.requesting_warehouse_name}</small><br>
+                            <small>${request.items?.length || 0} item(s) — ${formatDate(request.created_at)}</small>
+                        </div>
+                        <div class="ms-3">
+                            <button type="button" class="btn btn-sm btn-outline-success approve-request-btn" 
+                                    data-request-id="${request.id}" data-ref="${request.reference_no}">Approve</button>
+                        </div>
+                    </li>
+                `).join('');
+            }
+
+            // Handle approve warehouse request
+            document.addEventListener('click', async function(e) {
+                if (e.target.classList.contains('approve-request-btn')) {
+                    e.preventDefault();
+                    
+                    const btn = e.target;
+                    const requestId = btn.getAttribute('data-request-id');
+                    const ref = btn.getAttribute('data-ref');
+
+                    if (!confirm(`Approve warehouse request ${ref}?`)) {
+                        return;
+                    }
+
+                    try {
+                        btn.disabled = true;
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Approving...';
+
+                        const response = await fetch(`<?= site_url('api/warehouse-requests/approve') ?>/${requestId}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok && result.success) {
+                            showMessage('Warehouse request approved successfully!', 'success');
+                            loadPendingWarehouseRequests();
+                            loadPendingOutboundReceipts(); // Reload outbound as new outbound was created
+                        } else {
+                            throw new Error(result.error || 'Failed to approve request');
+                        }
+                    } catch (error) {
+                        console.error('Error approving warehouse request:', error);
+                        showMessage('Error approving request: ' + error.message, 'error');
+                        btn.disabled = false;
+                        btn.innerHTML = 'Approve';
+                    }
+                }
+            });
+
             // Load initial data
             document.addEventListener('DOMContentLoaded', function() {
                 loadMovementHistory();
                 loadPendingInboundReceipts();
                 loadPendingOutboundReceipts();
+                loadPendingWarehouseRequests();
             });
+
+            // Expose helper functions to global scope so other scripts (modal) can call them
+            window.loadMovementHistory = loadMovementHistory;
+            window.loadPendingOutboundReceipts = loadPendingOutboundReceipts;
+            window.showMessage = showMessage;
         })();
     </script>
+
+    <!-- Warehouse Request Modal -->
+    <div class="modal fade" id="warehouseRequestModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Request Items from Another Warehouse</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="warehouseRequestForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Requesting Warehouse (Your Warehouse)</label>
+                                <select class="form-select" id="requestingWarehouse" name="requesting_warehouse_id" required>
+                                    <option value="">Select Warehouse</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Supplying Warehouse</label>
+                                <select class="form-select" id="supplyingWarehouse" name="supplying_warehouse_id" required>
+                                    <option value="">Select Warehouse</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Items to Request</label>
+                            <div id="requestItemsContainer">
+                                <div class="row mb-2 request-item">
+                                    <div class="col-md-7">
+                                        <select class="form-select item-select" name="items[0][item_id]" required>
+                                            <option value="">Select Item</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="number" class="form-control" name="items[0][quantity]" 
+                                               placeholder="Quantity" min="1" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-sm btn-danger remove-item-btn" disabled>Remove</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary mt-2" id="addItemBtn">
+                                <i class="fas fa-plus"></i> Add Item
+                            </button>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Notes (Optional)</label>
+                            <textarea class="form-control" name="notes" rows="3"></textarea>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> Once submitted, this request will be sent to the supplying warehouse manager for approval.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="submitRequestBtn">Submit Request</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Warehouse Request Modal Logic
+        let itemCounter = 1;
+        let warehouses = [];
+        let inventoryItems = [];
+
+        // Load warehouses and inventory on page load
+        async function loadWarehouseRequestData() {
+            try {
+                // Load warehouses
+                const warehouseRes = await fetch('<?= site_url('api/warehouse/list') ?>');
+                warehouses = await warehouseRes.json();
+                
+                const requestingSelect = document.getElementById('requestingWarehouse');
+                const supplyingSelect = document.getElementById('supplyingWarehouse');
+                
+                warehouses.forEach(w => {
+                    requestingSelect.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+                    supplyingSelect.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+                });
+
+                // Load all inventory items
+                const invRes = await fetch('<?= site_url('api/inventory/all-with-warehouse') ?>');
+                inventoryItems = await invRes.json();
+                
+                updateItemSelects();
+            } catch (error) {
+                console.error('Error loading warehouse request data:', error);
+            }
+        }
+
+        // Update all item select dropdowns
+        function updateItemSelects() {
+            const itemSelects = document.querySelectorAll('.item-select');
+            itemSelects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Select Item</option>';
+                
+                inventoryItems.forEach(item => {
+                    select.innerHTML += `<option value="${item.id}">${item.name} (${item.sku})</option>`;
+                });
+                
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            });
+        }
+
+        // Add item row
+        document.getElementById('addItemBtn').addEventListener('click', function() {
+            const container = document.getElementById('requestItemsContainer');
+            const newRow = document.createElement('div');
+            newRow.className = 'row mb-2 request-item';
+            newRow.innerHTML = `
+                <div class="col-md-7">
+                    <select class="form-select item-select" name="items[${itemCounter}][item_id]" required>
+                        <option value="">Select Item</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="number" class="form-control" name="items[${itemCounter}][quantity]" 
+                           placeholder="Quantity" min="1" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-sm btn-danger remove-item-btn">Remove</button>
+                </div>
+            `;
+            container.appendChild(newRow);
+            itemCounter++;
+            updateItemSelects();
+            updateRemoveButtons();
+        });
+
+        // Remove item row
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-item-btn')) {
+                e.target.closest('.request-item').remove();
+                updateRemoveButtons();
+            }
+        });
+
+        // Update remove buttons (disable if only one item)
+        function updateRemoveButtons() {
+            const items = document.querySelectorAll('.request-item');
+            const removeButtons = document.querySelectorAll('.remove-item-btn');
+            removeButtons.forEach(btn => {
+                btn.disabled = items.length === 1;
+            });
+        }
+
+        // Submit warehouse request
+        document.getElementById('submitRequestBtn').addEventListener('click', async function() {
+            const form = document.getElementById('warehouseRequestForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const formData = new FormData(form);
+            const data = {
+                requesting_warehouse_id: formData.get('requesting_warehouse_id'),
+                supplying_warehouse_id: formData.get('supplying_warehouse_id'),
+                notes: formData.get('notes'),
+                items: []
+            };
+
+            // Collect items
+            const itemRows = document.querySelectorAll('.request-item');
+            itemRows.forEach((row, index) => {
+                const itemId = formData.get(`items[${index}][item_id]`);
+                const quantity = formData.get(`items[${index}][quantity]`);
+                if (itemId && quantity) {
+                    data.items.push({
+                        item_id: parseInt(itemId),
+                        quantity: parseInt(quantity)
+                    });
+                }
+            });
+
+            if (data.items.length === 0) {
+                alert('Please add at least one item');
+                return;
+            }
+
+            try {
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Submitting...';
+
+                const response = await fetch('<?= site_url('api/warehouse-requests/create') ?>', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    alert('Warehouse request submitted successfully!');
+                    bootstrap.Modal.getInstance(document.getElementById('warehouseRequestModal')).hide();
+                    form.reset();
+                    itemCounter = 1;
+                    document.getElementById('requestItemsContainer').innerHTML = `
+                        <div class="row mb-2 request-item">
+                            <div class="col-md-7">
+                                <select class="form-select item-select" name="items[0][item_id]" required>
+                                    <option value="">Select Item</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" class="form-control" name="items[0][quantity]" 
+                                       placeholder="Quantity" min="1" required>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-sm btn-danger remove-item-btn" disabled>Remove</button>
+                            </div>
+                        </div>
+                    `;
+                    updateItemSelects();
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to submit request'));
+                }
+            } catch (error) {
+                console.error('Error submitting request:', error);
+                alert('Error submitting request');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = 'Submit Request';
+            }
+        });
+
+        // Load data when modal is opened
+        document.getElementById('warehouseRequestModal').addEventListener('shown.bs.modal', function() {
+            if (warehouses.length === 0) {
+                loadWarehouseRequestData();
+            }
+        });
+    </script>
+
+    <?= view('partials/create_outbound_modal') ?>
 </body>
 </html>

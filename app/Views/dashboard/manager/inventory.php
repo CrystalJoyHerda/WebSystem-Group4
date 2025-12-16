@@ -102,8 +102,6 @@
                             <th>Item</th>
                             <th>SKU</th>
                             <th>Category</th>
-                            <th>Warehouse</th>
-                            <th>Location</th>
                             <th>Quantity</th>
                             <th>Status</th>
                             <th>Expiry</th>
@@ -117,8 +115,6 @@
                                     <td><?= esc($it['name']) ?></td>
                                     <td><?= esc($it['sku']) ?></td>
                                     <td><?= esc($it['category']) ?></td>
-                                    <td><?= esc($it['warehouse_name'] ?? 'Not assigned') ?></td>
-                                    <td><?= esc($it['location']) ?></td>
                                     <td><?= esc($it['quantity']) ?></td>
                                     <td>
                                         <?php $s = $it['status'] ?? 'in'; ?>
@@ -148,7 +144,7 @@
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="9" class="text-center text-muted">No items found</td>
+                                <td colspan="7" class="text-center text-muted">No items found</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

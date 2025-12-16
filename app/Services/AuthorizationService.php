@@ -36,7 +36,11 @@ class AuthorizationService
 					}
 				}
 				$out = array_values(array_unique($out));
-				return $out;
+				// If the role exists in RBAC tables but has no permissions assigned yet,
+				// fall back to built-in defaults so the app remains usable.
+				if ($out !== []) {
+					return $out;
+				}
 			}
 		}
 

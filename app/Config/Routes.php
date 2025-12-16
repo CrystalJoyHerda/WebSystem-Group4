@@ -33,6 +33,7 @@ $routes->get('dashboard', 'Dashboard::index');
 $routes->get('dashboard/manager', 'Dashboard::manager');
 $routes->get('dashboard/staff', 'Dashboard::staff');
 $routes->get('dashboard/viewer', 'Dashboard::viewer');
+$routes->get('dashboard/admin', 'Dashboard::admin');
 $routes->get('debug/session', 'Debug::session');
 $routes->match(['get','post'], 'auth/dbfetch', 'Auth::dbfetch');
 // Inventory page for managers
@@ -60,6 +61,10 @@ $routes->delete('api/workforce/(:num)', 'WorkforceController::delete/$1');
 $routes->get('dashboard/staff/barcode', function () {
     return view('dashboard/staff/barcodescan');
 });
+
+// Staff tasks (Warehouse Staff barcode workflow)
+$routes->get('api/staff-tasks/pending', 'StaffTaskController::getPendingTasks');
+$routes->post('api/staff-tasks/scan-item', 'StaffTaskController::scanTaskItem');
 
 // Warehouses
 $routes->get('dashboard/manager/warehouses', 'WarehouseController::index');
@@ -99,15 +104,60 @@ $routes->get('seed-test-data', 'TestDataController::seedTestData');
 
 
 // IT Administrator Routes
-$routes->get('dashboard', 'Dashboard::admin');
-$routes->get('user-management', 'Admin::userManagement');
-$routes->get('access-control', 'Admin::accessControl');
-$routes->get('system-logs', 'Admin::systemLogs');
-$routes->get('backup-recovery', 'Admin::backupRecovery');
-$routes->get('system-configuration', 'Admin::systemConfiguration');
-$routes->get('reports', 'Admin::reports');
-$routes->get('notifications', 'Admin::notifications');
-$routes->get('profile', 'Admin::profile');
+$routes->group('', ['filter' => 'itAdmin'], static function ($routes) {
+	// IT Administrator pages
+	$routes->get('admin', 'Admin::index');
+	$routes->get('admin/user-management', 'Admin::userManagement');
+	$routes->get('admin/access-control', 'Admin::accessControl');
+	$routes->get('system-logs', 'Admin::systemLogs');
+	$routes->get('backup-recovery', 'Admin::backupRecovery');
+	$routes->get('system-configuration', 'Admin::systemConfiguration');
+	$routes->get('reports', 'Admin::reports');
+	$routes->get('notifications', 'Admin::notifications');
+	$routes->get('profile', 'Admin::profile');
+
+	// IT Administrator APIs
+	$routes->get('api/admin/users', 'Admin::listUsers');
+	$routes->post('api/admin/users', 'Admin::createUser');
+	$routes->put('api/admin/users/(:num)', 'Admin::updateUser/$1');
+	$routes->delete('api/admin/users/(:num)', 'Admin::deleteUser/$1');
+	$routes->post('api/admin/users/(:num)/reset-password', 'Admin::resetPassword/$1');
+	$routes->post('api/admin/users/(:num)/status', 'Admin::setUserStatus/$1');
+	$routes->get('api/admin/backups', 'Admin::listBackups');
+	$routes->post('api/admin/backups', 'Admin::createBackup');
+	$routes->get('api/admin/backups/(:segment)/download', 'Admin::downloadBackup/$1');
+	$routes->post('api/admin/backups/restore', 'Admin::restoreBackup');
+	$routes->get('api/admin/roles', 'Admin::listRoles');
+	$routes->post('api/admin/roles/(:segment)', 'Admin::setRolePermissions/$1');
+	$routes->get('api/admin/audit-logs', 'Admin::listAuditLogs');
+	$routes->get('api/admin/overview', 'Admin::overview');
+	$routes->get('api/admin/system-settings', 'Admin::getSystemSettings');
+	$routes->post('api/admin/system-settings', 'Admin::saveSystemSettings');
+	$routes->get('api/admin/warehouses', 'Admin::warehouses');
+	$routes->post('api/admin/current-warehouse', 'Admin::setCurrentWarehouse');
+});
+
+// Tickets API
+$routes->get('api/tickets', 'TicketController::index');
+$routes->post('api/tickets', 'TicketController::create');
+$routes->get('api/tickets/(:num)', 'TicketController::show/$1');
+$routes->put('api/tickets/(:num)', 'TicketController::update/$1');
+$routes->post('api/tickets/(:num)/assign', 'TicketController::assign/$1');
+$routes->post('api/tickets/(:num)/status', 'TicketController::setStatus/$1');
+$routes->post('api/tickets/(:num)/comment', 'TicketController::comment/$1');
+
+// Assets API
+$routes->get('api/assets', 'AssetController::index');
+$routes->post('api/assets', 'AssetController::create');
+$routes->put('api/assets/(:num)', 'AssetController::update/$1');
+$routes->post('api/assets/(:num)/assign', 'AssetController::assign/$1');
+$routes->post('api/assets/(:num)/return', 'AssetController::returnAsset/$1');
+$routes->get('api/assets/(:num)/history', 'AssetController::history/$1');
+
+// Jobs/Queue API
+$routes->post('api/jobs', 'JobController::enqueue');
+$routes->get('api/jobs', 'JobController::index');
+
 
 // Stock Movement and Staff Task Integration Routes
 $routes->post('stockmovements/approveInboundReceipt', 'stockmovements::approveInboundReceipt');

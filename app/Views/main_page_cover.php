@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Warehouse Management System</title>
+    <link href="<?= base_url('public/assets/theme.css') ?>" rel="stylesheet">
+    <script src="<?= base_url('public/assets/theme.js') ?>" defer></script>
 </head>
 <body>
     <ul>

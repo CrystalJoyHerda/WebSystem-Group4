@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>We Build - IT Administrator Dashboard</title>
-    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="<?= base_url('public/assets/theme.css') ?>" rel="stylesheet">
+    <script src="<?= base_url('public/assets/theme.js') ?>" defer></script>
     <style>
         * {
             margin: 0;
@@ -16,83 +16,96 @@
         }
 
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Georgia', 'Times New Roman', serif;
             background: #f5f5f5;
             display: flex;
             height: 100vh;
             overflow: hidden;
         }
 
-        /* Sidebar Styles */
+        /* sidebar */
         .sidebar {
-            width: 250px;
-            background: #2c3e50;
-            color: white;
+            width: 220px;
+            background: #ecebe9;
+            color: #333;
             display: flex;
             flex-direction: column;
             padding: 0;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
         }
 
         .sidebar-header {
-            padding: 30px 20px;
+            padding: 40px 20px;
             text-align: center;
-            background: #34495e;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid #ddd;
+        }
+
+        .user-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #b8b8b8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            margin: 0 auto 15px;
         }
 
         .sidebar-header h3 {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 600;
-            margin-bottom: 5px;
+            color: #333;
             letter-spacing: 0.5px;
         }
 
         .sidebar-menu {
             flex: 1;
-            padding: 20px 0;
+            padding: 30px 0;
             overflow-y: auto;
         }
 
-        .sidebar-menu::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .sidebar-menu::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 3px;
-        }
-
         .menu-item {
-            display: flex;
-            align-items: center;
-            padding: 15px 25px;
-            color: #ecf0f1;
+            display: block;
+            padding: 12px 30px;
+            color: #333;
             text-decoration: none;
             transition: all 0.3s;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 500;
         }
 
         .menu-item:hover {
-            background: #34495e;
-            color: white;
-            padding-left: 30px;
+            background: #ddd;
+            color: #000;
         }
 
         .menu-item.active {
-            background: #34495e;
-            border-left: 4px solid #3498db;
+            background: #333;
+            color: white;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            padding: 12px 30px;
+            margin: 20px;
+            background: white;
+            border: 1px solid #333;
+            border-radius: 5px;
+            color: #333;
+            text-align: center;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #333;
             color: white;
         }
 
-        .menu-item i {
-            width: 25px;
-            margin-right: 15px;
-            font-size: 16px;
-        }
-
-        /* Main Content Styles */
         .main-content {
             flex: 1;
             display: flex;
@@ -100,35 +113,22 @@
             overflow: hidden;
         }
 
-        /* Header Styles */
+        /* Header */
         .header {
             background: white;
             padding: 20px 40px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             border-bottom: 1px solid #e0e0e0;
         }
 
-        .logo-section {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .logo-section img {
-            width: 50px;
-            height: auto;
-        }
-
         .logo-section h1 {
-            font-size: 32px;
-            font-weight: 300;
+            font-size: 36px;
+            font-weight: 400;
             color: #333;
             margin: 0;
-            font-style: italic;
-            font-family: 'Times New Roman', Times, serif;
+            font-family: 'Georgia', 'Times New Roman', serif;
         }
 
         .header-right {
@@ -137,266 +137,512 @@
             gap: 20px;
         }
 
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .user-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: #34495e;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 20px;
-        }
-
-        .user-details h4 {
-            font-size: 14px;
-            margin: 0;
-            color: #333;
-        }
-
-        .user-details p {
-            font-size: 12px;
-            margin: 0;
-            color: #666;
-        }
-
-        .settings-icon {
+        .notification-icon {
             font-size: 24px;
-            color: #333;
+            color: #ff6b35;
             cursor: pointer;
-            transition: all 0.3s;
+            position: relative;
         }
 
-        .settings-icon:hover {
-            color: #143449ff;
-            transform: rotate(90deg);
-        }
-
-        /* Dashboard Content */
+        /* Dashboard */
         .dashboard-content {
             flex: 1;
-            padding: 30px 40px;
+            padding: 40px 60px;
             overflow-y: auto;
-            background: #f5f5f5;
+            background: white;
         }
 
         .dashboard-title {
-            font-size: 32px;
-            font-weight: 600;
+            font-size: 28px;
+            font-weight: 400;
             color: #333;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
             text-align: center;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
+            font-family: 'Georgia', 'Times New Roman', serif;
         }
 
-        /* Quick Actions */
-        .quick-actions {
+        /* System Cards Grid */
+        .systems-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
             margin-bottom: 30px;
         }
 
-        .quick-actions h3 {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #333;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .action-btn {
-            padding: 12px 25px;
-            background: #e0e0e0;
-            border: none;
-            border-radius: 5px;
-            color: #333;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .action-btn:hover {
-            background: #d0d0d0;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Stats Cards */
-        .stats-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .stat-card {
+        .system-card {
             background: white;
-            border: 2px solid #333;
+            border: 1px solid #ddd;
             border-radius: 8px;
             padding: 30px;
-            text-align: center;
-            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-        }
-
-        .stat-card h3 {
-            font-size: 16px;
+        .system-card h3 {
+            font-size: 20px;
             font-weight: 600;
             color: #333;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            font-family: 'Georgia', 'Times New Roman', serif;
         }
 
-        .stat-card .number {
-            font-size: 36px;
-            font-weight: 700;
-            color: #2c3e50;
+        .capacity-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 10px;
         }
 
-        .stat-card .subtitle {
-            font-size: 12px;
+        .capacity-label {
+            font-size: 14px;
             color: #666;
-            margin-top: 5px;
+        }
+
+        .capacity-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: #333;
+            transition: width 0.3s;
+        }
+
+        .progress-bar-fill.blue {
+            background: #4a90e2;
+        }
+
+        .progress-bar-fill.high {
+            background: #333;
+        }
+
+        .system-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .status-message {
+            font-size: 13px;
+            color: #4a90e2;
+            margin-top: 15px;
+        }
+
+        .status-message.success {
+            color: #27ae60;
+        }
+
+        .status-message.warning {
+            color: #f39c12;
+        }
+
+        /* Alert Cards Grid */
+        .alerts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+
+        .alert-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .alert-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            font-family: 'Georgia', 'Times New Roman', serif;
+        }
+
+        .alert-number {
+            font-size: 72px;
+            font-weight: 300;
+            color: #333;
         }
 
         /* Responsive */
+        @media (max-width: 1200px) {
+            .systems-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 200px;
             }
 
-            .header {
-                padding: 15px 20px;
-            }
-
-            .dashboard-content {
-                padding: 20px;
-            }
-
-            .stats-container {
+            .systems-grid,
+            .alerts-grid {
                 grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
+    <?php
+        $permissions = $permissions ?? [];
+        $path = service('uri')->getPath();
+        $canDashboard = in_array('admin.dashboard.view', $permissions, true);
+        $canUsers = in_array('user.manage', $permissions, true);
+        $canLogs = in_array('logs.view', $permissions, true);
+        $canAccess = in_array('access.view', $permissions, true);
+        $canBackup = in_array('backup.view', $permissions, true);
+        $canConfig = in_array('config.view', $permissions, true);
+    ?>
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-header">
+            <div class="user-avatar">
+                <i class="fas fa-user"></i>
+            </div>
             <h3>IT Administrator</h3>
         </div>
         <div class="sidebar-menu">
-            <a href="<?= site_url('dashboard/admin') ?>" class="menu-item active">
-                <i class="fas fa-chart-line"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="<?= site_url('user-management') ?>" class="menu-item">
-                <i class="fas fa-users"></i>
-                <span>User Management</span>
-            </a>
-            <a href="<?= site_url('access-control') ?>" class="menu-item">
-                <i class="fas fa-lock"></i>
-                <span>Access Control</span>
-            </a>
-            <a href="<?= site_url('system-logs') ?>" class="menu-item">
-                <i class="fas fa-history"></i>
-                <span>System Logs / Audit Trail</span>
-            </a>
-            <a href="<?= site_url('backup-recovery') ?>" class="menu-item">
-                <i class="fas fa-sync-alt"></i>
-                <span>Backup & Recovery</span>
-            </a>
-            <a href="<?= site_url('system-configuration') ?>" class="menu-item">
-                <i class="fas fa-cog"></i>
-                <span>System Configuration</span>
-            </a>
-            <a href="<?= site_url('reports') ?>" class="menu-item">
-                <i class="fas fa-file-alt"></i>
-                <span>Reports</span>
-            </a>
-            <a href="<?= site_url('notifications') ?>" class="menu-item">
-                <i class="fas fa-bell"></i>
-                <span>Notifications</span>
-            </a>
-            <a href="<?= site_url('profile') ?>" class="menu-item">
-                <i class="fas fa-user-circle"></i>
-                <span>Profile / Account Settings</span>
-            </a>
+            <?php if ($canDashboard): ?>
+                <a href="<?= site_url('admin') ?>" class="menu-item <?= ($path === 'admin') ? 'active' : '' ?>">Dashboard</a>
+            <?php endif; ?>
+            <?php if ($canUsers): ?>
+                <a href="<?= site_url('admin/user-management') ?>" class="menu-item <?= ($path === 'admin/user-management') ? 'active' : '' ?>">User Management</a>
+            <?php endif; ?>
+            <?php if ($canAccess): ?>
+                <a href="<?= site_url('admin/access-control') ?>" class="menu-item <?= ($path === 'admin/access-control') ? 'active' : '' ?>">Access Control</a>
+            <?php endif; ?>
+            <?php if ($canLogs): ?>
+                <a href="<?= site_url('system-logs') ?>" class="menu-item <?= ($path === 'system-logs') ? 'active' : '' ?>">System Logs</a>
+            <?php endif; ?>
+            <?php if ($canBackup): ?>
+                <a href="<?= site_url('backup-recovery') ?>" class="menu-item <?= ($path === 'backup-recovery') ? 'active' : '' ?>">Backup & Recovery</a>
+            <?php endif; ?>
+            <?php if ($canConfig): ?>
+                <a href="<?= site_url('system-configuration') ?>" class="menu-item <?= ($path === 'system-configuration') ? 'active' : '' ?>">System Configuration</a>
+            <?php endif; ?>
         </div>
+        <button class="logout-btn" onclick="window.location.href='<?= site_url('logout') ?>'">Logout</button>
     </div>
 
-    <!-- Main Content -->
     <div class="main-content">
-        <!-- Header -->
         <div class="header">
             <div class="logo-section">
-                <img src="<?= base_url('public/assets/llogo.png') ?>" alt="We Build Logo">
-                <h1>We Build</h1>
+                <h1>WeBuild</h1>
             </div>
             <div class="header-right">
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div class="user-details">
-                        <h4><?= esc(session()->get('name') ?? 'IT Administrator') ?></h4>
-                        <p>Role: <?= esc(session()->get('role') ?? 'Admin') ?></p>
-                    </div>
-                </div>
-                <a href="<?= site_url('logout') ?>" style="text-decoration: none;">
-                    <i class="fas fa-sign-out-alt settings-icon" title="Logout"></i>
-                </a>
+                <select id="warehouseSelect" class="form-select form-select-sm" style="min-width:200px;display:none"></select>
+                <i class="fas fa-bell notification-icon"></i>
             </div>
         </div>
 
-        <!-- Dashboard Content -->
         <div class="dashboard-content">
-            <h2 class="dashboard-title">DASHBOARD</h2>
+            <h2 class="dashboard-title">System Overview</h2>
 
-            <!-- Quick Actions -->
-            <div class="quick-actions">
-                <h3>Quick Actions</h3>
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="window.location.href='<?= site_url('system-configuration') ?>'">System Maintenance</button>
-                    <button class="action-btn" onclick="window.location.href='<?= site_url('access-control') ?>'">Security</button>
-                    <button class="action-btn" onclick="window.location.href='<?= site_url('reports') ?>'">System Reports</button>
-                </div>
-            </div>
-
-            <!-- Stats Cards -->
-            <div class="stats-container">
-                <div class="stat-card">
-                    <h3>Active Users</h3>
-                    <div class="number">100</div>
-                </div>
-                <div class="stat-card">
-                    <h3>System Uptime</h3>
-                    <div class="number">99.97%</div>
-                    <div class="subtitle">Last restart: 3 days ago</div>
-                </div>
-                <div class="stat-card">
+            <!-- System Cards -->
+            <div class="systems-grid">
+                <!-- Open Tickets -->
+                <div class="system-card">
                     <h3>Open Tickets</h3>
-                    <div class="number">5</div>
+                    <div class="alert-number" id="mOpenTickets" style="font-size:56px;">0</div>
+                    <div class="status-message warning">Needs attention</div>
+                </div>
+
+                <!-- Devices Online -->
+                <div class="system-card">
+                    <h3>Devices Online</h3>
+                    <div class="alert-number" id="mDevicesOnline" style="font-size:56px;">0</div>
+                    <div class="status-message success">Healthy</div>
+                </div>
+
+                <!-- Devices Offline -->
+                <div class="system-card">
+                    <h3>Devices Offline</h3>
+                    <div class="alert-number" id="mDevicesOffline" style="font-size:56px;">0</div>
+                    <div class="status-message warning">Investigate</div>
+                </div>
+
+                <!-- Pending Approvals -->
+                <div class="system-card">
+                    <h3>Pending Approvals</h3>
+                    <div class="alert-number" id="mPendingApprovals" style="font-size:56px;">0</div>
+                    <div class="status-message warning">Waiting review</div>
+                </div>
+
+                <!-- Security Alerts -->
+                <div class="system-card">
+                    <h3>Security Alerts</h3>
+                    <div class="alert-number" id="mSecurityAlerts" style="font-size:56px;">0</div>
+                    <div class="status-message success">No critical issues</div>
+                </div>
+
+                <!-- Assets Assigned -->
+                <div class="system-card">
+                    <h3>Assets Assigned</h3>
+                    <div class="alert-number" id="mAssetsAssigned" style="font-size:56px;">0</div>
+                    <div class="status-message success">Tracked</div>
                 </div>
             </div>
+
+            <!-- Alert Cards -->
+            <div class="alerts-grid">
+                <div class="alert-card">
+                    <h3>Quick Actions</h3>
+                    <div class="d-flex flex-column gap-2">
+                        <a class="btn btn-sm btn-outline-dark" href="<?= site_url('admin/user-management') ?>"><i class="fa-solid fa-user-plus me-1"></i>Add User</a>
+                        <a class="btn btn-sm btn-outline-dark" href="<?= site_url('admin/user-management') ?>"><i class="fa-solid fa-key me-1"></i>Reset Password</a>
+                    </div>
+                </div>
+                <div class="alert-card">
+                    <h3>Quick Actions</h3>
+                    <div class="d-flex flex-column gap-2">
+                        <a class="btn btn-sm btn-outline-dark" href="<?= site_url('admin') ?>"><i class="fa-solid fa-ticket me-1"></i>Create Ticket</a>
+                        <a class="btn btn-sm btn-outline-dark" href="<?= site_url('admin') ?>"><i class="fa-solid fa-laptop me-1"></i>Assign Asset</a>
+                    </div>
+                </div>
+            </div>
+
+            <?php if ($canLogs): ?>
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <h3 class="mb-0" style="font-size:18px;font-weight:600;">Recent Activity</h3>
+                        <input id="auditSearch" class="form-control form-control-sm" style="max-width:320px" placeholder="Search logs (actor/action/entity)">
+                    </div>
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width:90px">#</th>
+                                            <th style="width:170px">When</th>
+                                            <th style="width:160px">Actor</th>
+                                            <th style="width:140px">Action</th>
+                                            <th style="width:120px">Entity</th>
+                                            <th style="width:110px">Entity ID</th>
+                                            <th>Summary</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="auditTbody">
+                                        <tr><td colspan="7" class="text-center text-muted p-4">Loading...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (() => {
+            const CAN_LOGS = <?= $canLogs ? 'true' : 'false' ?>;
+            const OVERVIEW_API = '<?= site_url('api/admin/overview') ?>';
+            const API_BASE = CAN_LOGS ? '<?= site_url('api/admin/audit-logs') ?>' : null;
+            const WAREHOUSE_API = '<?= site_url('api/admin/warehouses') ?>';
+            const SET_WAREHOUSE_API = '<?= site_url('api/admin/current-warehouse') ?>';
+            let debounceTimer = null;
+
+            const searchEl = document.getElementById('auditSearch');
+            if (CAN_LOGS && searchEl) {
+                searchEl.addEventListener('input', () => {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(loadLogs, 250);
+                });
+            }
+
+            initWarehouse();
+
+            async function initWarehouse() {
+                const sel = document.getElementById('warehouseSelect');
+                if (!sel) {
+                    loadOverview();
+                    loadLogs();
+                    return;
+                }
+
+                const res = await fetch(WAREHOUSE_API, { credentials: 'same-origin' });
+                if (!res.ok) {
+                    loadOverview();
+                    loadLogs();
+                    return;
+                }
+                const data = await res.json();
+                const warehouses = Array.isArray(data.warehouses) ? data.warehouses : [];
+                const currentId = data.current_warehouse_id;
+
+                sel.innerHTML = '';
+                warehouses.forEach(w => {
+                    const opt = document.createElement('option');
+                    opt.value = String(w.id);
+                    opt.textContent = w.location ? `${w.name} (${w.location})` : w.name;
+                    sel.appendChild(opt);
+                });
+
+                if (warehouses.length > 0) {
+                    sel.style.display = '';
+                }
+
+                if (currentId) {
+                    sel.value = String(currentId);
+                    loadOverview();
+                    loadLogs();
+                } else if (warehouses.length > 0) {
+                    await setWarehouse(Number(warehouses[0].id));
+                } else {
+                    loadOverview();
+                    loadLogs();
+                }
+
+                sel.addEventListener('change', async () => {
+                    const id = Number(sel.value);
+                    if (!id) return;
+                    await setWarehouse(id);
+                });
+            }
+
+            async function setWarehouse(id) {
+                const res = await fetch(SET_WAREHOUSE_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ warehouse_id: id }),
+                });
+                if (res.ok) {
+                    window.location.reload();
+                }
+            }
+
+            async function loadOverview() {
+                const res = await fetch(`${OVERVIEW_API}?limit=15`, { credentials: 'same-origin' });
+                if (!res.ok) return;
+                const data = await res.json();
+                const m = (data && data.metrics) ? data.metrics : {};
+
+                setText('mOpenTickets', m.open_tickets);
+                setText('mDevicesOnline', m.devices_online);
+                setText('mDevicesOffline', m.devices_offline);
+                setText('mPendingApprovals', m.pending_approvals);
+                setText('mSecurityAlerts', m.security_alerts);
+                setText('mAssetsAssigned', m.assets_assigned);
+            }
+
+            function setText(id, val) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.textContent = (val === null || val === undefined) ? '0' : String(val);
+            }
+
+            function buildUrl() {
+                if (!CAN_LOGS || !API_BASE) return null;
+                const q = (searchEl && searchEl.value) ? searchEl.value.trim() : '';
+                const params = new URLSearchParams();
+                if (q) params.set('q', q);
+                params.set('limit', '15');
+                return `${API_BASE}?${params.toString()}`;
+            }
+
+            async function loadLogs() {
+                if (!CAN_LOGS) return;
+                const tbody = document.getElementById('auditTbody');
+                if (!tbody) return;
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-4">Loading...</td></tr>';
+
+                const url = buildUrl();
+                if (!url) return;
+                const res = await fetch(url, { credentials: 'same-origin' });
+                if (!res.ok) {
+                    let msg = `Failed to load (HTTP ${res.status})`;
+                    try {
+                        const data = await res.json();
+                        if (data && data.error) {
+                            msg = `${msg}: ${data.error}`;
+                        }
+                    } catch (e) {
+                        try {
+                            const txt = await res.text();
+                            if (txt) {
+                                msg = `${msg}: ${txt}`;
+                            }
+                        } catch (e2) {}
+                    }
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted p-4">${escapeHtml(msg)}</td></tr>`;
+                    return;
+                }
+                const logs = await res.json();
+                tbody.innerHTML = '';
+                if (!Array.isArray(logs) || logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-4">No recent activity</td></tr>';
+                    return;
+                }
+
+                logs.forEach(l => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${escapeHtml(l.id)}</td>
+                        <td>${escapeHtml(l.created_at || '')}</td>
+                        <td>${escapeHtml(l.actor_name || 'System')}</td>
+                        <td>${escapeHtml(prettyAction(l.action || ''))}</td>
+                        <td>${escapeHtml(l.entity_type || '')}</td>
+                        <td>${escapeHtml(l.entity_id || '')}</td>
+                        <td class="text-muted small">${escapeHtml(l.summary || '')}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function prettyAction(a) {
+                const map = {
+                    'create': 'Create',
+                    'update': 'Update',
+                    'delete': 'Delete',
+                    'status': 'Status Change',
+                    'reset_password': 'Reset Password',
+                    'login': 'Login',
+                    'logout': 'Logout'
+                };
+                return map[a] || a;
+            }
+
+            function escapeHtml(s) {
+                if (s === null || s === undefined) return '';
+                return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+            }
+        })();
+    </script>
 </body>
 </html>

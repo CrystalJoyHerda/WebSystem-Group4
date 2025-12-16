@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme-lock="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="<?= base_url('public/assets/theme.css') ?>" rel="stylesheet">
+    <script src="<?= base_url('public/assets/theme.js') ?>" defer></script>
     <style>
         * {
             margin: 0;
@@ -15,18 +17,20 @@
             box-sizing: border-box;
         }
 
-        body {
+        body.login-page {
             height: 100vh;
-            background: url('<?= base_url('public/assets/bg.png') ?>') no-repeat center center;
-            background-size: cover;
+            background: url('<?= base_url('public/assets/bg.png') ?>') no-repeat center center !important;
+            background-size: cover !important;
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: Arial, sans-serif;
+            font-size: 0;
             position: relative;
+            color: #ffffff !important;
         }
 
-        body::before {
+        body.login-page::before {
             content: '';
             position: absolute;
             top: 0;
@@ -42,6 +46,7 @@
             z-index: 1;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 30px;
+            font-size: 16px;
             padding: 0;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
             width: 100%;
@@ -209,7 +214,7 @@
         }
     </style>
 </head>
-<body>
+<body class="login-page">
     <div class="login-container">
         <div class="logo-section">
             <div class="logo-wrapper">

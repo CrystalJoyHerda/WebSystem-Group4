@@ -26,6 +26,7 @@ class Inventory extends BaseController
         }
 
         $model = new InventoryModel();
+        $threshold = $model->getLowStockThreshold();
 
         $data = [
             'name'     => $this->request->getPost('name'),
@@ -47,7 +48,7 @@ class Inventory extends BaseController
         $qty = (int) $data['quantity'];
         if ($qty <= 0) {
             $data['status'] = 'out';
-        } elseif ($qty < 10) {
+        } elseif ($qty <= $threshold) {
             $data['status'] = 'low';
         } else {
             $data['status'] = 'in';
@@ -97,6 +98,7 @@ class Inventory extends BaseController
         }
 
         $model = new InventoryModel();
+        $threshold = $model->getLowStockThreshold();
 
         if (empty($id) || ! is_numeric($id)) {
             session()->setFlashdata('error', 'Invalid item id');
@@ -125,7 +127,7 @@ class Inventory extends BaseController
         $qty = (int) $data['quantity'];
         if ($qty <= 0) {
             $data['status'] = 'out';
-        } elseif ($qty < 10) {
+        } elseif ($qty <= $threshold) {
             $data['status'] = 'low';
         } else {
             $data['status'] = 'in';

@@ -5,6 +5,21 @@ use CodeIgniter\Controller;
 
 class Dashboard extends Controller
 {
+    private function normalizeRole($role): string
+    {
+        $role = (string) ($role ?? '');
+        $role = strtolower(trim($role));
+        $role = preg_replace('/\s+/', '', $role);
+        $role = str_replace('_', '', $role);
+        return $role;
+    }
+
+    private function isItAdminRole($role): bool
+    {
+        $normalized = $this->normalizeRole($role);
+        return in_array($normalized, ['itadministrator', 'itadminstrator', 'itadministsrator'], true);
+    }
+
     public function index()
     {
         if (! session()->get('isLoggedIn')) {
@@ -13,6 +28,10 @@ class Dashboard extends Controller
         }
 
         $role = session()->get('role') ?? session()->get('role');
+        if ($this->isItAdminRole($role)) {
+            return redirect()->to('/dashboard/admin');
+        }
+
         if ($role === 'manager') {
             return redirect()->to('/dashboard/manager');
         }
@@ -65,14 +84,19 @@ class Dashboard extends Controller
         echo view('dashboard/viewer/viewer');
     }
 
-     public function admin()
+    public function admin()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('login');
-        }
-        if (session('role') !== 'admin') {
+            session()->setFlashdata('info', 'Please log in to access the dashboard.');
             return redirect()->to('/login');
         }
-        echo view('dashboard/admin/admin');
+        
+        $role = session()->get('role');
+        if (! $this->isItAdminRole($role)) {
+            session()->setFlashdata('error', 'Access denied. Admin privileges required.');
+            return redirect()->to('/login');
+        }
+        
+        return redirect()->to('/admin');
     }
 }

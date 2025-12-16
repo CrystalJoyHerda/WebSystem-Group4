@@ -9,6 +9,8 @@
     <link href="<?= base_url('css/site.css') ?>" rel="stylesheet">
     <link href="<?= base_url('css/manager.css') ?>" rel="stylesheet">
     <link href="<?= base_url('css/staff.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('public/assets/theme.css') ?>" rel="stylesheet">
+    <script src="<?= base_url('public/assets/theme.js') ?>" defer></script>
     <style>
         /* small adjustments for staff-specific tweaks if needed */
         .page-title { text-align:center; font-size: 34px; margin-top: 6px; margin-bottom: 14px; }

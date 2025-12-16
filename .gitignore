@@ -1,0 +1,14 @@
+/vendor/
+/node_modules/
+/.env
+/.env.*
+/.vscode/
+/.idea/
+*.log
+
+/writable/*
+!/writable/index.html
+!/writable/.htaccess
+
+/public/build/
+/public/hot/

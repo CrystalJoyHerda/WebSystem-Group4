@@ -10,10 +10,28 @@ class TransferModel extends Model
     protected $allowedFields = ['item_id','from_warehouse_id','to_warehouse_id','quantity','status','approved_by','approved_at','notes','created_by','created_at'];
     protected $useTimestamps = false;
 
+    private function applyWarehouseScope($builder, ?int $warehouseId, ?array $allowedWarehouseIds)
+    {
+        if ($warehouseId !== null && $warehouseId > 0) {
+            $builder->groupStart()
+                ->where('t.from_warehouse_id', $warehouseId)
+                ->orWhere('t.to_warehouse_id', $warehouseId)
+                ->groupEnd();
+            return;
+        }
+
+        if ($allowedWarehouseIds !== null && $allowedWarehouseIds !== []) {
+            $builder->groupStart()
+                ->whereIn('t.from_warehouse_id', $allowedWarehouseIds)
+                ->orWhereIn('t.to_warehouse_id', $allowedWarehouseIds)
+                ->groupEnd();
+        }
+    }
+
     /**
      * Get transfer history with warehouse and item information
      */
-    public function getTransferHistory($limit = 50)
+    public function getTransferHistory($limit = 50, ?int $warehouseId = null, ?array $allowedWarehouseIds = null)
     {
         $builder = $this->db->table('transfers t')
             ->select('t.*, 
@@ -26,13 +44,15 @@ class TransferModel extends Model
             ->orderBy('t.created_at', 'DESC')
             ->limit($limit);
 
+        $this->applyWarehouseScope($builder, $warehouseId, $allowedWarehouseIds);
+
         return $builder->get()->getResultArray();
     }
 
     /**
      * Get pending transfers requiring approval
      */
-    public function getPendingTransfers()
+    public function getPendingTransfers(?int $warehouseId = null, ?array $allowedWarehouseIds = null)
     {
         $builder = $this->db->table('transfers t')
             ->select('t.*, 
@@ -44,6 +64,8 @@ class TransferModel extends Model
             ->join('warehouses w2', 'w2.id = t.to_warehouse_id', 'left')
             ->where('t.status', 'pending')
             ->orderBy('t.created_at', 'ASC');
+
+        $this->applyWarehouseScope($builder, $warehouseId, $allowedWarehouseIds);
 
         return $builder->get()->getResultArray();
     }
@@ -66,7 +88,7 @@ class TransferModel extends Model
     /**
      * Get transfer statistics
      */
-    public function getTransferStats($dateFrom = null, $dateTo = null)
+    public function getTransferStats($dateFrom = null, $dateTo = null, ?int $warehouseId = null, ?array $allowedWarehouseIds = null)
     {
         $builder = $this->db->table('transfers t');
         
@@ -77,6 +99,8 @@ class TransferModel extends Model
         if ($dateTo) {
             $builder->where('t.created_at <=', $dateTo);
         }
+
+        $this->applyWarehouseScope($builder, $warehouseId, $allowedWarehouseIds);
 
         $stats = $builder->select('
             COUNT(*) as total_transfers,

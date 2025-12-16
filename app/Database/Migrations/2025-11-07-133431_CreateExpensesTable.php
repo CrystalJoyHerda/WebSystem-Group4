@@ -35,6 +35,12 @@ class CreateExpensesTable extends Migration
                 'type'       => 'DECIMAL',
                 'constraint' => '5,2',
             ],
+            'vendor_id' => [
+                'type'       => 'INT',
+                'constraint' => 11,
+                'unsigned'   => true,
+                'null'       => true,
+            ],
             'amount' => [
                 'type'       => 'DECIMAL',
                 'constraint' => '10,2',

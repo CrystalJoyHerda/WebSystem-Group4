@@ -6,6 +6,8 @@ if ($role === 'manager') $roleLabel = 'Warehouse Manager';
 elseif ($role === 'staff') $roleLabel = 'Warehouse Staff';
 elseif ($role === 'viewer') $roleLabel = 'Warehouse Viewer';
 ?>
+<link href="<?= base_url('public/assets/theme.css') ?>" rel="stylesheet">
+<script src="<?= base_url('public/assets/theme.js') ?>" defer></script>
 <style>
     /* Sidebar base layout (match manager dashboard spacing) */
     .sidebar {
@@ -25,6 +27,20 @@ elseif ($role === 'viewer') $roleLabel = 'Warehouse Viewer';
     .sidebar .nav-link { color: #000 !important; padding: 12px 8px; display:block; }
     .sidebar .nav-link.active { color: #000 !important; font-weight: 600; }
     .sidebar .nav-link:hover { color: #000 !important; text-decoration: none; }
+
+    @media (max-width: 991px) {
+        .sidebar {
+            position: relative;
+            width: 100%;
+            height: auto;
+        }
+        .sidebar .logout-dock {
+            position: static !important;
+            left: auto !important;
+            bottom: auto !important;
+            margin-top: 12px;
+        }
+    }
 </style>
 <aside class="sidebar">
     <div class="profile">
@@ -52,7 +68,7 @@ elseif ($role === 'viewer') $roleLabel = 'Warehouse Viewer';
             <a class="nav-link" href="<?= site_url('dashboard') ?>">Dashboard</a>
         <?php endif; ?>
     </nav>
-    <div style="position:absolute;left:18px;bottom:18px">
+    <div class="logout-dock" style="position:absolute;left:18px;bottom:18px">
         <a href="<?= site_url('logout') ?>" class="btn btn-sm btn-outline-dark">Logout</a>
     </div>
 </aside>

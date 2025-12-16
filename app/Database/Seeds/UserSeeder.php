@@ -39,6 +39,15 @@ class UserSeeder extends Seeder
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ],
+            [
+                'email' => 'admin@whs.com',
+                'name' => 'Jesse',
+                // password: admin123
+                'password' => password_hash('admin123', PASSWORD_DEFAULT),
+                'role' => 'IT administrator',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ],
         ];
 
         $builder = $this->db->table('users');

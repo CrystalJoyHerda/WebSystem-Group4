@@ -31,7 +31,7 @@ elseif ($role === 'topmanagement') $roleLabel = 'Top Management';
     }
     .sidebar .profile { text-align: center; margin-bottom: 20px; }
     .sidebar .nav-link { color: #000 !important; padding: 12px 8px; display:block; }
-<<<<<<< HEAD
+
     .sidebar .nav-link.active { color: #000 !important; font-weight: 600; }
     .sidebar .nav-link:hover { color: #000 !important; text-decoration: none; }
 
@@ -47,7 +47,8 @@ elseif ($role === 'topmanagement') $roleLabel = 'Top Management';
             bottom: auto !important;
             margin-top: 12px;
         }
-=======
+    }
+
     .sidebar .nav-link.active { color: #000 !important; font-weight: 600; background-color: rgba(0,0,0,0.05); border-radius: 4px; }
     .sidebar .nav-link:hover { color: #000 !important; text-decoration: none; background-color: rgba(0,0,0,0.03); border-radius: 4px; }
     .sidebar .role-badge {
@@ -58,7 +59,6 @@ elseif ($role === 'topmanagement') $roleLabel = 'Top Management';
         border-radius: 12px;
         font-size: 12px;
         margin-top: 5px;
->>>>>>> 3ba9caf0451f5b53307c188eaea4609feaf8ea62
     }
 </style>
 <aside class="sidebar">

@@ -32,6 +32,10 @@ class Dashboard extends Controller
             return redirect()->to('/dashboard/admin');
         }
 
+        if ($this->normalizeRole($role) === 'topmanagement') {
+            return redirect()->to('/top-management');
+        }
+
         if ($role === 'manager') {
             return redirect()->to('/dashboard/manager');
         }

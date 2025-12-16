@@ -14,6 +14,7 @@ use CodeIgniter\Filters\PerformanceMetrics;
 use CodeIgniter\Filters\SecureHeaders;
 use App\Filters\ItAdminFilter;
 use App\Filters\SessionTimeoutFilter;
+use App\Filters\TopManagementFilter;
 
 class Filters extends BaseFilters
 {
@@ -37,6 +38,7 @@ class Filters extends BaseFilters
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
         'itAdmin'       => ItAdminFilter::class,
+        'topManagement' => TopManagementFilter::class,
         'sessionTimeout' => SessionTimeoutFilter::class,
     ];
 

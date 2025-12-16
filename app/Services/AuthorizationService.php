@@ -107,6 +107,21 @@ class AuthorizationService
             ];
         }
 
+        if ($normalized === 'topmanagement') {
+            return [
+                'top.dashboard.view',
+                'inventory.view',
+                'transfers.view',
+                'transfers.approve',
+                'po.view',
+                'po.approve',
+                'finance.view',
+                'reports.view',
+                'logs.view',
+                'ticket.view_all',
+            ];
+        }
+
         return [];
     }
 

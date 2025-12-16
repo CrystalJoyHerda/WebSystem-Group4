@@ -232,6 +232,8 @@ class Auth extends Controller
                     // Redirect based on role
                     if ($this->isItAdminRole($user['role'])) {
                         return redirect()->to('dashboard/admin');
+                    } elseif ($this->normalizeRole($user['role']) === 'topmanagement') {
+                        return redirect()->to('top-management');
                     } elseif ($user['role'] === 'manager') {
                         return redirect()->to('dashboard/manager');
                     } elseif ($user['role'] === 'staff') {

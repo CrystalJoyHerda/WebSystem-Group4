@@ -364,7 +364,16 @@
             </div>
             <div class="header-right">
                 <select id="warehouseSelect" class="form-select form-select-sm" style="min-width:200px;display:none"></select>
-                <i class="fas fa-bell notification-icon"></i>
+                <a href="#" class="position-relative" style="display:inline-block;" data-notifications-api="<?= site_url('api/admin/notifications') ?>">
+                    <i class="fas fa-bell notification-icon"></i>
+                    <span class="badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill" data-notifications-count style="display:none;font-size:10px;">0</span>
+                    <div class="card shadow" data-notifications-dropdown style="display:none; position:absolute; right:0; margin-top:10px; width:340px; z-index:2000;">
+                        <div class="card-body p-2">
+                            <div class="fw-semibold px-1 pb-1">Notifications</div>
+                            <div data-notifications-list class="small text-muted">Loading...</div>
+                        </div>
+                    </div>
+                </a>
             </div>
         </div>
 

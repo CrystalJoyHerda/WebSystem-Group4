@@ -130,11 +130,50 @@ $routes->group('', ['filter' => 'itAdmin'], static function ($routes) {
 	$routes->get('api/admin/roles', 'Admin::listRoles');
 	$routes->post('api/admin/roles/(:segment)', 'Admin::setRolePermissions/$1');
 	$routes->get('api/admin/audit-logs', 'Admin::listAuditLogs');
+	$routes->get('api/admin/notifications', 'Admin::notificationsApi');
+	$routes->get('api/admin/profile', 'Admin::getProfile');
+	$routes->post('api/admin/profile', 'Admin::updateProfile');
 	$routes->get('api/admin/overview', 'Admin::overview');
 	$routes->get('api/admin/system-settings', 'Admin::getSystemSettings');
 	$routes->post('api/admin/system-settings', 'Admin::saveSystemSettings');
 	$routes->get('api/admin/warehouses', 'Admin::warehouses');
 	$routes->post('api/admin/current-warehouse', 'Admin::setCurrentWarehouse');
+});
+
+// Top Management Routes
+$routes->group('', ['filter' => 'topManagement'], static function ($routes) {
+	$routes->get('top-management', 'TopManagement::index');
+	$routes->get('top-management/profile', 'TopManagement::profile');
+	$routes->get('top-management/inventory', 'TopManagement::inventory');
+	$routes->get('top-management/transfers', 'TopManagement::transfers');
+	$routes->get('top-management/approvals', 'TopManagement::approvals');
+	$routes->get('top-management/finance', 'TopManagement::finance');
+	$routes->get('top-management/reports', 'TopManagement::reports');
+	$routes->get('top-management/audit', 'TopManagement::audit');
+
+	$routes->get('api/top/warehouses', 'TopManagement::warehouses');
+	$routes->get('api/top/overview', 'TopManagement::overview');
+	$routes->get('api/top/notifications', 'TopManagement::notificationsApi');
+	$routes->get('api/top/profile', 'TopManagement::getProfile');
+	$routes->post('api/top/profile', 'TopManagement::updateProfile');
+	$routes->get('api/top/pending-transfers', 'TopManagement::pendingTransfers');
+	$routes->post('api/top/transfers/(:num)/decide', 'TopManagement::decideTransfer/$1');
+	$routes->get('api/top/audit-logs', 'TopManagement::auditLogs');
+
+	$routes->get('api/top/inventory/overview', 'TopManagement::inventoryOverview');
+	$routes->get('api/top/inventory/low-stock', 'TopManagement::inventoryLowStock');
+
+	$routes->get('api/top/transfers/history', 'TopManagement::transferHistory');
+
+	$routes->get('api/top/purchase-orders/pending', 'TopManagement::pendingPurchaseOrders');
+	$routes->post('api/top/purchase-orders/(:num)/decide', 'TopManagement::decidePurchaseOrder/$1');
+
+	$routes->get('api/top/finance/summary', 'TopManagement::financeSummary');
+
+	$routes->get('api/top/reports/inventory', 'TopManagement::reportInventory');
+	$routes->get('api/top/reports/transfers', 'TopManagement::reportTransfers');
+	$routes->get('api/top/reports/approvals', 'TopManagement::reportApprovals');
+	$routes->get('api/top/reports/audit-logs', 'TopManagement::reportAuditLogs');
 });
 
 // Tickets API

@@ -48,6 +48,15 @@ class UserSeeder extends Seeder
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ],
+            [
+                'email' => 'topmanagement@whs.com',
+                'name' => 'Top Management',
+                // password: topmgmt123
+                'password' => password_hash('topmgmt123', PASSWORD_DEFAULT),
+                'role' => 'topmanagement',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ],
         ];
 
         $builder = $this->db->table('users');
@@ -135,6 +144,22 @@ class UserSeeder extends Seeder
                 'name' => 'Site Supervisor',
                 'password' => password_hash('view123', PASSWORD_DEFAULT),
                 'role' => 'viewer',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ],
+            [
+                'email' => 'admin@whs.com',
+                'name' => 'IT Administrator',
+                'password' => password_hash('admin123', PASSWORD_DEFAULT),
+                'role' => 'IT administrator',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ],
+             [
+                'email' => 'topmgmtn@whs.com',
+                'name' => 'Top Management',
+                'password' => password_hash('topmgmt123', PASSWORD_DEFAULT),
+                'role' => 'topmanagement',
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ],

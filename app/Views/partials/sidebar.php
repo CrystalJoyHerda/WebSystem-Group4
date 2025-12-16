@@ -2,6 +2,7 @@
 $session = session();
 $role = $session ? $session->get('role') ?? 'guest' : 'guest';
 $roleLabel = 'Guest';
+
 if ($role === 'manager') $roleLabel = 'Warehouse Manager';
 elseif ($role === 'staff') $roleLabel = 'Warehouse Staff';
 elseif ($role === 'viewer') $roleLabel = 'Warehouse Viewer';
@@ -11,6 +12,11 @@ elseif ($role === 'procurement_officer') $roleLabel = 'Procurement Officer';
 elseif ($role === 'inventory_auditor') $roleLabel = 'Inventory Auditor';
 elseif ($role === 'it_administrator') $roleLabel = 'IT Administrator';
 elseif ($role === 'topmanagement') $roleLabel = 'Top Management';
+
+$profileUrl = 'profile';
+if ($role === 'topmanagement') {
+    $profileUrl = 'top-management/profile';
+}
 ?>
 <link href="<?= base_url('public/assets/theme.css') ?>" rel="stylesheet">
 <script src="<?= base_url('public/assets/theme.js') ?>" defer></script>
@@ -208,20 +214,8 @@ elseif ($role === 'topmanagement') $roleLabel = 'Top Management';
             </a>
             
         <?php elseif ($role === 'topmanagement'): ?>
-            <a class="nav-link" href="<?= site_url('dashboard/executive') ?>">
+            <a class="nav-link" href="<?= site_url('top-management') ?>">
                 <i class="fas fa-tachometer-alt me-2"></i>Executive Dashboard
-            </a>
-            <a class="nav-link" href="<?= site_url('dashboard/executive/financial') ?>">
-                <i class="fas fa-chart-line me-2"></i>Financial Overview
-            </a>
-            <a class="nav-link" href="<?= site_url('dashboard/executive/inventory') ?>">
-                <i class="fas fa-boxes me-2"></i>Inventory Summary
-            </a>
-            <a class="nav-link" href="<?= site_url('dashboard/executive/performance') ?>">
-                <i class="fas fa-chart-bar me-2"></i>Performance Metrics
-            </a>
-            <a class="nav-link" href="<?= site_url('dashboard/executive/reports') ?>">
-                <i class="fas fa-file-alt me-2"></i>Executive Reports
             </a>
             
         <?php else: ?>
@@ -242,7 +236,7 @@ elseif ($role === 'topmanagement') $roleLabel = 'Top Management';
             <div class="sidebar-section-title" style="font-size: 12px; color: #666; padding: 5px 8px; text-transform: uppercase;">
                 General
             </div>
-            <a class="nav-link" href="<?= site_url('profile') ?>">
+            <a class="nav-link" href="<?= site_url($profileUrl) ?>">
                 <i class="fas fa-user me-2"></i>My Profile
             </a>
             <a class="nav-link" href="<?= site_url('notifications') ?>">
@@ -256,11 +250,7 @@ elseif ($role === 'topmanagement') $roleLabel = 'Top Management';
             </a>
         <?php endif; ?>
     </nav>
-<<<<<<< HEAD
     <div class="logout-dock" style="position:absolute;left:18px;bottom:18px">
-        <a href="<?= site_url('logout') ?>" class="btn btn-sm btn-outline-dark">Logout</a>
-=======
-    <div style="position:absolute;left:18px;bottom:18px">
         <?php if ($role !== 'guest'): ?>
             <a href="<?= site_url('logout') ?>" class="btn btn-sm btn-outline-dark">
                 <i class="fas fa-sign-out-alt me-1"></i>Logout
@@ -270,7 +260,6 @@ elseif ($role === 'topmanagement') $roleLabel = 'Top Management';
                 <i class="fas fa-sign-in-alt me-1"></i>Login
             </a>
         <?php endif; ?>
->>>>>>> 3ba9caf0451f5b53307c188eaea4609feaf8ea62
     </div>
 </aside>
 

@@ -12,4 +12,8 @@ class Home extends BaseController
 
         return view('main_page_cover');
     }
+
+    public function procurement() {
+        return view('dashboard/procurement_officer/procurement');
+    }
 }

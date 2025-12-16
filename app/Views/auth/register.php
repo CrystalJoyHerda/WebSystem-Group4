@@ -19,7 +19,7 @@
 
         body {
             height: 100vh;
-            background: url('<?= base_url('public/assets/bg.png') ?>') no-repeat center center;
+            background: url('<?= base_url('public/assets/bg.png') ?>') no-repeat center center !important;
             background-size: cover;
             display: flex;
             align-items: center;

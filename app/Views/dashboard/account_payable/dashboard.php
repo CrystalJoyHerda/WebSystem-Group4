@@ -139,7 +139,7 @@
         }
     </style>
 </head>
-<body>
+<body class>
     <div class="app-shell">
         <?= view('partials/sidebar') ?>
 

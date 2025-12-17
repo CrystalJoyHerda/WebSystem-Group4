@@ -5,6 +5,21 @@ use CodeIgniter\Controller;
 
 class Dashboard extends Controller
 {
+    private function normalizeRole($role): string
+    {
+        $role = (string) ($role ?? '');
+        $role = strtolower(trim($role));
+        $role = preg_replace('/\s+/', '', $role);
+        $role = str_replace('_', '', $role);
+        return $role;
+    }
+
+    private function isItAdminRole($role): bool
+    {
+        $normalized = $this->normalizeRole($role);
+        return in_array($normalized, ['itadministrator', 'itadminstrator', 'itadministsrator'], true);
+    }
+
     public function index()
     {
         if (! session()->get('isLoggedIn')) {
@@ -13,10 +28,14 @@ class Dashboard extends Controller
         }
 
         $role = session()->get('role') ?? session()->get('role');
-        if ($role === 'admin') {
-            return redirect()->to('/dashboard/admin');
+        if ($this->isItAdminRole($role)) {
+            return redirect()->to('/admin');
         }
-        
+
+        if ($this->normalizeRole($role) === 'topmanagement') {
+            return redirect()->to('/top-management');
+        }
+
         if ($role === 'manager') {
             return redirect()->to('/dashboard/manager');
         }
@@ -221,7 +240,7 @@ class Dashboard extends Controller
         if (!session()->get('isLoggedIn')) {
             return redirect()->to('login');
         }
-        if (session('role') !== 'admin') {
+        if (! $this->isItAdminRole(session('role'))) {
             return redirect()->to('/login');
         }
         echo view('dashboard/IT Adminstrator/dashboard');

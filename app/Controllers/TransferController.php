@@ -260,6 +260,8 @@ class TransferController extends BaseController
             return $this->response->setStatusCode(400)->setJSON(['error' => 'Invalid action']);
         }
 
+        $status = $action === 'approve' ? 'approved' : 'rejected';
+
         $transferModel = new TransferModel();
 
         $allowedWarehouseIds = $this->allowedWarehouseIdsOrNull();
@@ -290,10 +292,10 @@ class TransferController extends BaseController
             }
 
             $approverId = (int) ($this->session->get('userID') ?? 0);
-            $result = $transferModel->updateTransferStatus($transferId, $action, $approverId, $notes);
+            $result = $transferModel->updateTransferStatus($transferId, $status, $approverId, $notes);
             
             if ($result) {
-                return $this->response->setJSON(['success' => true, 'action' => $action]);
+                return $this->response->setJSON(['success' => true, 'action' => $action, 'status' => $status]);
             } else {
                 return $this->response->setStatusCode(404)->setJSON(['error' => 'Transfer not found']);
             }

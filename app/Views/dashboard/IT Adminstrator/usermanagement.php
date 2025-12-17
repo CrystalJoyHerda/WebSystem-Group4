@@ -228,7 +228,16 @@
             </div>
             <div class="header-right">
                 <select id="warehouseSelect" class="form-select form-select-sm" style="min-width:200px;display:none"></select>
-                <i class="fas fa-bell notification-icon"></i>
+                <a href="#" class="position-relative" style="display:inline-block;" data-notifications-api="<?= site_url('api/admin/notifications') ?>">
+                    <i class="fas fa-bell notification-icon"></i>
+                    <span class="badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill" data-notifications-count style="display:none;font-size:10px;">0</span>
+                    <div class="card shadow" data-notifications-dropdown style="display:none; position:absolute; right:0; margin-top:10px; width:340px; z-index:2000;">
+                        <div class="card-body p-2">
+                            <div class="fw-semibold px-1 pb-1">Notifications</div>
+                            <div data-notifications-list class="small text-muted">Loading...</div>
+                        </div>
+                    </div>
+                </a>
             </div>
         </div>
 
@@ -370,25 +379,6 @@
         </div>
     </div>
 
-    <!-- Confirm Delete Modal -->
-    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-sm">
-            <div class="modal-content">
-                <div class="modal-body">
-                    <p class="mb-0">Delete this user?</p>
-                    <div class="mt-2">
-                        <label class="form-label small">Admin Password</label>
-                        <input id="deleteAdminPassword" type="password" class="form-control form-control-sm" placeholder="Enter your password to confirm" required>
-                    </div>
-                    <div class="mt-3 text-end">
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                        <button id="confirmDeleteBtn" type="button" class="btn btn-danger btn-sm">Delete</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Confirm Status Change Modal -->
     <div class="modal fade" id="confirmStatusModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-sm">
@@ -412,23 +402,20 @@
     <script>
     (() => {
         const API_BASE = '<?= site_url('api/admin/users') ?>';
-        const CURRENT_USER_ID = <?= json_encode($currentUserId ?? null) ?>;
+        const CURRENT_USER_ID = <?= json_encode(session()->get('userID') ?? null) ?>;
         const WAREHOUSE_API = '<?= site_url('api/admin/warehouses') ?>';
         const SET_WAREHOUSE_API = '<?= site_url('api/admin/current-warehouse') ?>';
         let users = [];
-        let deleteTargetId = null;
         let statusTargetId = null;
         let statusNextActive = null;
         let debounceTimer = null;
 
         const userModal = new bootstrap.Modal(document.getElementById('userModal'));
-        const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
         const resetModal = new bootstrap.Modal(document.getElementById('resetModal'));
         const statusModal = new bootstrap.Modal(document.getElementById('confirmStatusModal'));
 
         document.getElementById('btnAddUser').addEventListener('click', openAddModal);
         document.getElementById('userForm').addEventListener('submit', onSaveUser);
-        document.getElementById('confirmDeleteBtn').addEventListener('click', onConfirmDelete);
         document.getElementById('confirmStatusBtn').addEventListener('click', onConfirmStatus);
         document.getElementById('resetForm').addEventListener('submit', onResetPassword);
         document.getElementById('searchBox').addEventListener('input', scheduleLoad);
@@ -565,7 +552,6 @@
                             <button class="btn btn-sm ${toggleClass} btn-status" data-id="${u.id}" data-active="${isActive}" ${disableAttr} title="${toggleLabel}" aria-label="${toggleLabel}" ${isSelf ? 'disabled' : ''}>
                                 <i class="fa-solid ${isActive ? 'fa-ban' : 'fa-check'}"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${u.id}" ${disableAttr} title="Delete" aria-label="Delete" ${isSelf ? 'disabled' : ''}><i class="fa-solid fa-trash"></i></button>
                         </div>
                     </td>
                 `;
@@ -574,7 +560,7 @@
         }
 
         document.getElementById('usersTbody').addEventListener('click', (e) => {
-            const btn = e.target.closest('.btn-edit, .btn-delete, .btn-reset, .btn-status');
+            const btn = e.target.closest('.btn-edit, .btn-reset, .btn-status');
             if (!btn) return;
             if (btn.disabled) return;
             const id = Number(btn.dataset.id);
@@ -584,11 +570,6 @@
                 openResetModal(id);
             } else if (btn.classList.contains('btn-status')) {
                 openStatusConfirmModal(id, Number(btn.dataset.active || '1'));
-            } else {
-                deleteTargetId = id;
-                const delPwd = document.getElementById('deleteAdminPassword');
-                if (delPwd) delPwd.value = '';
-                deleteModal.show();
             }
         });
 
@@ -788,32 +769,6 @@
                 resetModal.hide();
             } catch (err) {
                 alert(err.message || 'Reset failed');
-            }
-        }
-
-        async function onConfirmDelete() {
-            if (deleteTargetId == null) return;
-            const adminPassword = document.getElementById('deleteAdminPassword')?.value;
-            if (!adminPassword) {
-                alert('Admin password is required');
-                return;
-            }
-            try {
-                const res = await fetch(`${API_BASE}/${deleteTargetId}`, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ admin_password: adminPassword }),
-                    credentials: 'same-origin'
-                });
-                if (!res.ok) {
-                    const j = await res.json().catch(() => null);
-                    throw new Error((j && j.error) ? j.error : 'Delete failed');
-                }
-                await loadUsers();
-                deleteTargetId = null;
-                deleteModal.hide();
-            } catch (err) {
-                alert(err.message || 'Delete failed');
             }
         }
 

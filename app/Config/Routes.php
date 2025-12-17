@@ -109,15 +109,98 @@ $routes->get('seed-test-data', 'TestDataController::seedTestData');
 
 
 // IT Administrator Routes
-$routes->get('dashboard', 'Dashboard::admin');
-$routes->get('user-management', 'Admin::userManagement');
-$routes->get('access-control', 'Admin::accessControl');
-$routes->get('system-logs', 'Admin::systemLogs');
-$routes->get('backup-recovery', 'Admin::backupRecovery');
-$routes->get('system-configuration', 'Admin::systemConfiguration');
-$routes->get('reports', 'Admin::reports');
-$routes->get('notifications', 'Admin::notifications');
-$routes->get('profile', 'Admin::profile');
+$routes->group('', ['filter' => 'itAdmin'], static function ($routes) {
+	// IT Administrator pages
+	$routes->get('admin', 'Admin::index');
+	$routes->get('admin/user-management', 'Admin::userManagement');
+	$routes->get('admin/access-control', 'Admin::accessControl');
+	$routes->get('system-logs', 'Admin::systemLogs');
+	$routes->get('backup-recovery', 'Admin::backupRecovery');
+	$routes->get('system-configuration', 'Admin::systemConfiguration');
+	$routes->get('reports', 'Admin::reports');
+	$routes->get('notifications', 'Admin::notifications');
+	$routes->get('profile', 'Admin::profile');
+
+	// IT Administrator APIs
+	$routes->get('api/admin/users', 'Admin::listUsers');
+	$routes->post('api/admin/users', 'Admin::createUser');
+	$routes->put('api/admin/users/(:num)', 'Admin::updateUser/$1');
+	$routes->delete('api/admin/users/(:num)', 'Admin::deleteUser/$1');
+	$routes->post('api/admin/users/(:num)/reset-password', 'Admin::resetPassword/$1');
+	$routes->post('api/admin/users/(:num)/status', 'Admin::setUserStatus/$1');
+	$routes->get('api/admin/backups', 'Admin::listBackups');
+	$routes->post('api/admin/backups', 'Admin::createBackup');
+	$routes->get('api/admin/backups/(:segment)/download', 'Admin::downloadBackup/$1');
+	$routes->post('api/admin/backups/restore', 'Admin::restoreBackup');
+	$routes->get('api/admin/roles', 'Admin::listRoles');
+	$routes->post('api/admin/roles/(:segment)', 'Admin::setRolePermissions/$1');
+	$routes->get('api/admin/audit-logs', 'Admin::listAuditLogs');
+	$routes->get('api/admin/notifications', 'Admin::notificationsApi');
+	$routes->get('api/admin/profile', 'Admin::getProfile');
+	$routes->post('api/admin/profile', 'Admin::updateProfile');
+	$routes->get('api/admin/overview', 'Admin::overview');
+	$routes->get('api/admin/system-settings', 'Admin::getSystemSettings');
+	$routes->post('api/admin/system-settings', 'Admin::saveSystemSettings');
+	$routes->get('api/admin/warehouses', 'Admin::warehouses');
+	$routes->post('api/admin/current-warehouse', 'Admin::setCurrentWarehouse');
+});
+
+// Top Management Routes
+$routes->group('', ['filter' => 'topManagement'], static function ($routes) {
+	$routes->get('top-management', 'TopManagement::index');
+	$routes->get('top-management/profile', 'TopManagement::profile');
+	$routes->get('top-management/inventory', 'TopManagement::inventory');
+	$routes->get('top-management/transfers', 'TopManagement::transfers');
+	$routes->get('top-management/approvals', 'TopManagement::approvals');
+	$routes->get('top-management/finance', 'TopManagement::finance');
+	$routes->get('top-management/reports', 'TopManagement::reports');
+	$routes->get('top-management/audit', 'TopManagement::audit');
+
+	$routes->get('api/top/warehouses', 'TopManagement::warehouses');
+	$routes->get('api/top/overview', 'TopManagement::overview');
+	$routes->get('api/top/notifications', 'TopManagement::notificationsApi');
+	$routes->get('api/top/profile', 'TopManagement::getProfile');
+	$routes->post('api/top/profile', 'TopManagement::updateProfile');
+	$routes->get('api/top/pending-transfers', 'TopManagement::pendingTransfers');
+	$routes->post('api/top/transfers/(:num)/decide', 'TopManagement::decideTransfer/$1');
+	$routes->get('api/top/audit-logs', 'TopManagement::auditLogs');
+
+	$routes->get('api/top/inventory/overview', 'TopManagement::inventoryOverview');
+	$routes->get('api/top/inventory/low-stock', 'TopManagement::inventoryLowStock');
+
+	$routes->get('api/top/transfers/history', 'TopManagement::transferHistory');
+
+	$routes->get('api/top/purchase-orders/pending', 'TopManagement::pendingPurchaseOrders');
+	$routes->post('api/top/purchase-orders/(:num)/decide', 'TopManagement::decidePurchaseOrder/$1');
+
+	$routes->get('api/top/finance/summary', 'TopManagement::financeSummary');
+
+	$routes->get('api/top/reports/inventory', 'TopManagement::reportInventory');
+	$routes->get('api/top/reports/transfers', 'TopManagement::reportTransfers');
+	$routes->get('api/top/reports/approvals', 'TopManagement::reportApprovals');
+	$routes->get('api/top/reports/audit-logs', 'TopManagement::reportAuditLogs');
+});
+
+// Tickets API
+$routes->get('api/tickets', 'TicketController::index');
+$routes->post('api/tickets', 'TicketController::create');
+$routes->get('api/tickets/(:num)', 'TicketController::show/$1');
+$routes->put('api/tickets/(:num)', 'TicketController::update/$1');
+$routes->post('api/tickets/(:num)/assign', 'TicketController::assign/$1');
+$routes->post('api/tickets/(:num)/status', 'TicketController::setStatus/$1');
+$routes->post('api/tickets/(:num)/comment', 'TicketController::comment/$1');
+
+// Assets API
+$routes->get('api/assets', 'AssetController::index');
+$routes->post('api/assets', 'AssetController::create');
+$routes->put('api/assets/(:num)', 'AssetController::update/$1');
+$routes->post('api/assets/(:num)/assign', 'AssetController::assign/$1');
+$routes->post('api/assets/(:num)/return', 'AssetController::returnAsset/$1');
+$routes->get('api/assets/(:num)/history', 'AssetController::history/$1');
+
+// Jobs/Queue API
+$routes->post('api/jobs', 'JobController::enqueue');
+$routes->get('api/jobs', 'JobController::index');
 
 // Stock Movement and Staff Task Integration Routes
 $routes->post('stockmovements/approveInboundReceipt', 'stockmovements::approveInboundReceipt');

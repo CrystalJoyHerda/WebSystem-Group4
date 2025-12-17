@@ -36,7 +36,11 @@ class AuthorizationService
 					}
 				}
 				$out = array_values(array_unique($out));
-				return $out;
+				// If the role exists in RBAC tables but has no permissions assigned yet,
+				// fall back to built-in defaults so the app remains usable.
+				if ($out !== []) {
+					return $out;
+				}
 			}
 		}
 
@@ -104,6 +108,21 @@ class AuthorizationService
             return [
                 'ticket.view_own',
                 'asset.view_own',
+            ];
+        }
+
+        if ($normalized === 'topmanagement') {
+            return [
+                'top.dashboard.view',
+                'inventory.view',
+                'transfers.view',
+                'transfers.approve',
+                'po.view',
+                'po.approve',
+                'finance.view',
+                'reports.view',
+                'logs.view',
+                'ticket.view_all',
             ];
         }
 

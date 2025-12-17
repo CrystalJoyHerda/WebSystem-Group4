@@ -44,7 +44,7 @@ class CreateARinvoicesTable extends Migration
 
         $this->forge->addKey('ar_invoice_id', true); // Primary key
         $this->forge->addForeignKey('customer_id', 'customers', 'customer_id', 'CASCADE', 'CASCADE');
-        $this->forge->createTable('ar_invoices');
+        $this->forge->createTable('ar_invoices', true);
     }
 
     public function down()

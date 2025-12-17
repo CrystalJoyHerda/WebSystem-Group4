@@ -8,6 +8,21 @@ class Auth extends Controller
     protected $db;
     protected $builder;
 
+    private function normalizeRole($role): string
+    {
+        $role = (string) ($role ?? '');
+        $role = strtolower(trim($role));
+        $role = preg_replace('/\s+/', '', $role);
+        $role = str_replace('_', '', $role);
+        return $role;
+    }
+
+    private function isItAdminRole($role): bool
+    {
+        $normalized = $this->normalizeRole($role);
+        return in_array($normalized, ['itadministrator', 'itadminstrator', 'itadministsrator'], true);
+    }
+
     public function __construct()
     {
         $this->db = \Config\Database::connect();
@@ -161,8 +176,10 @@ class Auth extends Controller
 
                     session()->setFlashdata('success', value: 'Welcome back, ' . $user['name'] . '!');
                     // Redirect based on role
-                    if ($user['role'] === 'admin') {
-                        return redirect()->to(base_url('dashboard/admin'));
+                    if ($this->isItAdminRole($user['role'])) {
+                        return redirect()->to(base_url('admin'));
+                    } elseif ($this->normalizeRole($user['role']) === 'topmanagement') {
+                        return redirect()->to(base_url('top-management'));
                     } elseif ($user['role'] === 'manager') {
                         return redirect()->to(base_url('dashboard/manager'));
                     } elseif ($user['role'] === 'staff') {

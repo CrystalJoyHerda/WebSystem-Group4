@@ -22,84 +22,7 @@ class Admin extends Controller
         $this->auth = new AuthorizationService();
     }
 
-    private function backupDir(): string
-    {
-        $dir = rtrim(WRITEPATH, '\\/') . DIRECTORY_SEPARATOR . 'backups';
-        if (! is_dir($dir)) {
-            @mkdir($dir, 0755, true);
-        }
-        return $dir;
-    }
-
-    private function sanitizeBackupName(string $name): ?string
-    {
-        $name = trim($name);
-        if ($name === '') {
-            return null;
-        }
-        if (strpos($name, '..') !== false || strpos($name, '/') !== false || strpos($name, '\\') !== false) {
-            return null;
-        }
-        if (! preg_match('/^[A-Za-z0-9._-]+$/', $name)) {
-            return null;
-        }
-        if (substr($name, -4) !== '.sql') {
-            return null;
-        }
-        return $name;
-    }
-
-    private function currentWarehouseId(): ?int
-    {
-        $id = $this->session->get('currentWarehouseId');
-        if ($id === null || $id === '') {
-            return null;
-        }
-        if (! is_numeric($id)) {
-            return null;
-        }
-        $id = (int) $id;
-        return $id > 0 ? $id : null;
-    }
-
-    private function requireCurrentWarehouseId(): ?\CodeIgniter\HTTP\ResponseInterface
-    {
-        $id = $this->currentWarehouseId();
-        if ($id === null) {
-            return $this->response->setStatusCode(400)->setJSON(['error' => 'Please select a warehouse']);
-        }
-        return null;
-    }
-
-    private function permissionsForRole($role): array
-    {
-        return $this->auth->permissionsForRole($role);
-    }
-
-    private function hasPermission(string $permission): bool
-    {
-        return $this->auth->hasPermission($this->session->get('role'), $permission);
-    }
-
-    private function isItAdminRole($role): bool
-    {
-        return $this->auth->isItAdminRole($role);
-    }
-
-    private function roleMap(): array
-    {
-        return [
-            'manager' => 'manager',
-            'staff' => 'staff',
-            'inventory_auditor' => 'inventory auditor',
-            'procurement_officer' => 'procurement officer',
-            'accounts_payable' => 'accounts payable',
-            'accounts_receivable' => 'accounts receivable',
-            'it_administrator' => 'IT administrator',
-            'topmanagement' => 'topmanagement',
-            'admin' => 'admin',
-        ];
-    }
+    // ... (rest of the code remains the same)
 
     private function guardPage(): ?\CodeIgniter\HTTP\RedirectResponse
     {
@@ -107,8 +30,23 @@ class Admin extends Controller
             return redirect()->to('/login');
         }
 
-        if (! $this->isItAdminRole($this->session->get('role'))) {
+        $role = $this->session->get('role');
+        if (! $this->auth->isItAdminRole($role)) {
             return redirect()->to('/login');
+        }
+
+        return null;
+    }
+
+    private function guardApi(): ?\CodeIgniter\HTTP\ResponseInterface
+    {
+        if (! $this->session->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Not logged in']);
+        }
+
+        $role = $this->session->get('role');
+        if (! $this->auth->isItAdminRole($role)) {
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Access denied']);
         }
 
         return null;
@@ -119,20 +57,10 @@ class Admin extends Controller
         if ($redirect = $this->guardPage()) {
             return $redirect;
         }
-        if (! $this->hasPermission($permission)) {
-            return redirect()->to('/admin');
-        }
-        return null;
-    }
 
-    private function guardApi(): ?\CodeIgniter\HTTP\ResponseInterface
-    {
-        if (! $this->session->get('isLoggedIn')) {
-            return $this->response->setStatusCode(401)->setJSON(['error' => 'Not logged in']);
-        }
-
-        if (! $this->isItAdminRole($this->session->get('role'))) {
-            return $this->response->setStatusCode(403)->setJSON(['error' => 'Access denied']);
+        $role = $this->session->get('role');
+        if (! $this->auth->hasPermission($role, $permission)) {
+            return redirect()->to('/dashboard');
         }
 
         return null;
@@ -143,44 +71,187 @@ class Admin extends Controller
         if ($deny = $this->guardApi()) {
             return $deny;
         }
-        if (! $this->hasPermission($permission)) {
+
+        $role = $this->session->get('role');
+        if (! $this->auth->hasPermission($role, $permission)) {
             return $this->response->setStatusCode(403)->setJSON(['error' => 'Access denied']);
         }
+
         return null;
     }
 
     private function viewData(array $extra = []): array
     {
         return array_merge([
-            'permissions' => $this->permissionsForRole($this->session->get('role')),
-            'currentUserId' => $this->session->get('userID') ? (int) $this->session->get('userID') : null,
-            'currentWarehouseId' => $this->currentWarehouseId(),
+            'permissions' => $this->auth->permissionsForRole($this->session->get('role')),
         ], $extra);
     }
 
-    private function getSystemSettingInt(string $key, int $default): int
+    private function currentWarehouseId(): ?int
+    {
+        $val = $this->session->get('currentWarehouseId');
+        if ($val === null || $val === '' || ! is_numeric($val)) {
+            return null;
+        }
+        $id = (int) $val;
+        return $id > 0 ? $id : null;
+    }
+
+    private function roleMap(): array
+    {
+        return [
+            'manager' => 'manager',
+            'staff' => 'staff',
+            'viewer' => 'viewer',
+            'inventory_auditor' => 'inventory auditor',
+            'procurement_officer' => 'procurement officer',
+            'accounts_payable' => 'accounts payable',
+            'accounts_receivable' => 'accounts receivable',
+            'it_administrator' => 'IT administrator',
+            'topmanagement' => 'topmanagement',
+        ];
+    }
+
+    private function passwordRateLimitCheck(string $scope): ?\CodeIgniter\HTTP\ResponseInterface
+    {
+        $untilKey = $scope . '_lock_until';
+        $until = (int) ($this->session->get($untilKey) ?? 0);
+        if ($until > time()) {
+            $remaining = $until - time();
+            if ($remaining < 1) {
+                $remaining = 1;
+            }
+            return $this->response->setStatusCode(429)->setJSON([
+                'error' => 'Too many password attempts. Please try again later.',
+                'retry_after' => $remaining,
+            ]);
+        }
+        return null;
+    }
+
+    private function passwordRateLimitFail(string $scope, int $maxAttempts = 5, int $lockSeconds = 600): void
+    {
+        $countKey = $scope . '_fail_count';
+        $untilKey = $scope . '_lock_until';
+
+        $count = (int) ($this->session->get($countKey) ?? 0);
+        $count++;
+
+        $set = [$countKey => $count];
+        if ($count >= $maxAttempts) {
+            $set[$untilKey] = time() + $lockSeconds;
+        }
+        $this->session->set($set);
+    }
+
+    private function passwordRateLimitClear(string $scope): void
+    {
+        $countKey = $scope . '_fail_count';
+        $untilKey = $scope . '_lock_until';
+        $this->session->set([
+            $countKey => 0,
+            $untilKey => 0,
+        ]);
+    }
+
+    private function requireAdminPasswordConfirm($adminPassword): ?\CodeIgniter\HTTP\ResponseInterface
+    {
+        $adminPassword = trim((string) ($adminPassword ?? ''));
+        if ($adminPassword === '') {
+            return $this->response->setStatusCode(422)->setJSON(['error' => 'Admin password is required']);
+        }
+
+        if ($resp = $this->passwordRateLimitCheck('admin_confirm')) {
+            return $resp;
+        }
+
+        $adminId = $this->session->get('userID') ? (int) $this->session->get('userID') : 0;
+        if ($adminId <= 0) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Not logged in']);
+        }
+
+        $model = new UserModel();
+        $row = $model->select('id, password, role')->find($adminId);
+        if (! $row) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Not logged in']);
+        }
+
+        if (! $this->auth->isItAdminRole($row['role'] ?? null)) {
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Access denied']);
+        }
+
+        $hash = (string) ($row['password'] ?? '');
+        if ($hash === '' || ! password_verify($adminPassword, $hash)) {
+            $this->passwordRateLimitFail('admin_confirm');
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Invalid password']);
+        }
+
+        $this->passwordRateLimitClear('admin_confirm');
+
+        return null;
+    }
+
+    private function getSystemSettingInt(string $key, int $default = 0): int
     {
         $db = \Config\Database::connect();
         if (! $db->tableExists('system_settings')) {
             return $default;
         }
 
-        $row = $db->table('system_settings')->select('setting_value')->where('setting_key', $key)->get()->getRowArray();
+        $model = new SystemSettingModel();
+        $row = $model->where('setting_key', $key)->first();
         if (! $row) {
             return $default;
         }
 
-        $val = $row['setting_value'] ?? null;
-        if ($val === null) {
-            return $default;
-        }
-
-        $val = trim((string) $val);
+        $val = (string) ($row['setting_value'] ?? '');
         if ($val === '' || ! is_numeric($val)) {
             return $default;
         }
-
         return (int) $val;
+    }
+
+    private function backupDir(): string
+    {
+        $dir = rtrim(WRITEPATH, '\\/') . DIRECTORY_SEPARATOR . 'backups';
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        return $dir;
+    }
+
+    private function sanitizeBackupName(string $name): ?string
+    {
+        $name = basename(trim($name));
+        if ($name === '') {
+            return null;
+        }
+        if (preg_match('/[^A-Za-z0-9._-]/', $name)) {
+            return null;
+        }
+        if (strtolower(substr($name, -4)) !== '.sql') {
+            return null;
+        }
+        return $name;
+    }
+
+    private function cleanupBackups(): void
+    {
+        $dir = $this->backupDir();
+        $keep = $this->getSystemSettingInt('backup.keep_count', 10);
+        if ($keep <= 0) {
+            $keep = 10;
+        }
+
+        $files = glob($dir . DIRECTORY_SEPARATOR . '*.sql') ?: [];
+        usort($files, static function ($a, $b) {
+            return strcmp((string) $b, (string) $a);
+        });
+
+        $extra = array_slice($files, $keep);
+        foreach ($extra as $path) {
+            @unlink($path);
+        }
     }
 
     public function index()
@@ -188,6 +259,7 @@ class Admin extends Controller
         if ($redirect = $this->guardPagePermission('admin.dashboard.view')) {
             return $redirect;
         }
+
         return view('dashboard/IT Adminstrator/dashboard', $this->viewData());
     }
 
@@ -196,6 +268,7 @@ class Admin extends Controller
         if ($redirect = $this->guardPagePermission('user.manage')) {
             return $redirect;
         }
+
         return view('dashboard/IT Adminstrator/usermanagement', $this->viewData());
     }
 
@@ -204,6 +277,7 @@ class Admin extends Controller
         if ($redirect = $this->guardPagePermission('access.view')) {
             return $redirect;
         }
+
         return view('dashboard/IT Adminstrator/accesscontrol', $this->viewData());
     }
 
@@ -212,6 +286,7 @@ class Admin extends Controller
         if ($redirect = $this->guardPagePermission('logs.view')) {
             return $redirect;
         }
+
         return view('dashboard/IT Adminstrator/systemlogs', $this->viewData());
     }
 
@@ -220,6 +295,7 @@ class Admin extends Controller
         if ($redirect = $this->guardPagePermission('backup.view')) {
             return $redirect;
         }
+
         return view('dashboard/IT Adminstrator/backuprecovery', $this->viewData());
     }
 
@@ -228,23 +304,26 @@ class Admin extends Controller
         if ($redirect = $this->guardPagePermission('config.view')) {
             return $redirect;
         }
+
         return view('dashboard/IT Adminstrator/systemconfiguration', $this->viewData());
     }
 
     public function reports()
     {
-        if ($redirect = $this->guardPage()) {
+        if ($redirect = $this->guardPagePermission('admin.dashboard.view')) {
             return $redirect;
         }
-        echo 'Reports page - Coming soon';
+
+        return redirect()->to('/admin');
     }
 
     public function notifications()
     {
-        if ($redirect = $this->guardPage()) {
+        if ($redirect = $this->guardPagePermission('admin.dashboard.view')) {
             return $redirect;
         }
-        echo 'Notifications page - Coming soon';
+
+        return redirect()->to('/admin');
     }
 
     public function profile()
@@ -252,7 +331,201 @@ class Admin extends Controller
         if ($redirect = $this->guardPage()) {
             return $redirect;
         }
-        echo 'Profile page - Coming soon';
+        return view('dashboard/IT Adminstrator/profile', $this->viewData());
+    }
+
+    public function getProfile()
+    {
+        if ($deny = $this->guardApiPermission('admin.dashboard.view')) {
+            return $deny;
+        }
+
+        $userId = $this->session->get('userID') ? (int) $this->session->get('userID') : 0;
+        if ($userId <= 0) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Not logged in']);
+        }
+
+        $model = new UserModel();
+        $row = $model->select('id, name, email, role, created_at, updated_at')->find($userId);
+        if (! $row) {
+            return $this->response->setStatusCode(404)->setJSON(['error' => 'User not found']);
+        }
+
+        return $this->response->setJSON(['user' => $row]);
+    }
+
+    public function updateProfile()
+    {
+        if ($deny = $this->guardApiPermission('admin.dashboard.view')) {
+            return $deny;
+        }
+
+        $userId = $this->session->get('userID') ? (int) $this->session->get('userID') : 0;
+        if ($userId <= 0) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Not logged in']);
+        }
+
+        $data = $this->request->getJSON(true);
+        if (! $data) {
+            return $this->response->setStatusCode(400)->setJSON(['error' => 'Missing data']);
+        }
+
+        $currentPassword = (string) ($data['current_password'] ?? '');
+        if (trim($currentPassword) === '') {
+            return $this->response->setStatusCode(422)->setJSON(['error' => 'Current password is required']);
+        }
+
+        if ($resp = $this->passwordRateLimitCheck('admin_profile')) {
+            return $resp;
+        }
+
+        $model = new UserModel();
+        $existing = $model->find($userId);
+        if (! $existing) {
+            return $this->response->setStatusCode(404)->setJSON(['error' => 'User not found']);
+        }
+
+        $hash = (string) ($existing['password'] ?? '');
+        if ($hash === '' || ! password_verify($currentPassword, $hash)) {
+            $this->passwordRateLimitFail('admin_profile');
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Invalid password']);
+        }
+
+        $this->passwordRateLimitClear('admin_profile');
+
+        $name = array_key_exists('name', $data) ? trim((string) $data['name']) : null;
+        $email = array_key_exists('email', $data) ? trim((string) $data['email']) : null;
+        $newPassword = trim((string) ($data['new_password'] ?? ''));
+        $confirmPassword = trim((string) ($data['confirm_password'] ?? ''));
+
+        $update = [];
+        if ($name !== null && $name !== '' && $name !== (string) ($existing['name'] ?? '')) {
+            $update['name'] = $name;
+        }
+        if ($email !== null && $email !== '' && $email !== (string) ($existing['email'] ?? '')) {
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return $this->response->setStatusCode(422)->setJSON(['error' => 'Invalid email']);
+            }
+            $dup = $model->where('email', $email)->where('id !=', $userId)->first();
+            if ($dup) {
+                return $this->response->setStatusCode(422)->setJSON(['error' => 'Email already in use']);
+            }
+            $update['email'] = $email;
+        }
+        if ($newPassword !== '') {
+            if (strlen($newPassword) < 6) {
+                return $this->response->setStatusCode(422)->setJSON(['error' => 'New password must be at least 6 characters']);
+            }
+            if ($confirmPassword === '' || $confirmPassword !== $newPassword) {
+                return $this->response->setStatusCode(422)->setJSON(['error' => 'Password confirmation does not match']);
+            }
+            $update['password'] = password_hash($newPassword, PASSWORD_DEFAULT);
+        }
+
+        if ($update === []) {
+            return $this->response->setJSON(['success' => true]);
+        }
+
+        $db = \Config\Database::connect();
+        if ($db->fieldExists('updated_by', 'users')) {
+            $update['updated_by'] = $userId;
+        }
+
+        $ok = $model->update($userId, $update);
+        if (! $ok) {
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'Failed to update profile']);
+        }
+
+        $after = $model->select('id, name, email, role, created_at, updated_at')->find($userId);
+        $this->session->set([
+            'name' => $after['name'] ?? $this->session->get('name'),
+            'email' => $after['email'] ?? $this->session->get('email'),
+        ]);
+
+        $this->writeAuditLog('update', 'profile', $userId, [
+            'id' => $existing['id'] ?? $userId,
+            'name' => $existing['name'] ?? null,
+            'email' => $existing['email'] ?? null,
+        ], [
+            'id' => $after['id'] ?? $userId,
+            'name' => $after['name'] ?? null,
+            'email' => $after['email'] ?? null,
+        ]);
+
+        return $this->response->setJSON(['success' => true, 'user' => $after]);
+    }
+
+    public function notificationsApi()
+    {
+        if ($deny = $this->guardApiPermission('admin.dashboard.view')) {
+            return $deny;
+        }
+
+        $db = \Config\Database::connect();
+        $items = [];
+
+        $warehouseId = null;
+        $reqWarehouseId = $this->request->getGet('warehouse_id');
+        if ($reqWarehouseId !== null && $reqWarehouseId !== '' && is_numeric($reqWarehouseId)) {
+            $warehouseId = (int) $reqWarehouseId;
+            if ($warehouseId <= 0) {
+                $warehouseId = null;
+            }
+        }
+        if ($warehouseId === null) {
+            $warehouseId = $this->currentWarehouseId();
+        }
+
+        try {
+            if ($db->tableExists('tickets')) {
+                $builder = $db->table('tickets');
+                if ($warehouseId !== null && $db->fieldExists('warehouse_id', 'tickets')) {
+                    $builder->where('warehouse_id', $warehouseId);
+                }
+                $open = (int) $builder->where('status !=', 'closed')->countAllResults();
+                if ($open > 0) {
+                    $items[] = [
+                        'type' => 'warning',
+                        'title' => 'Open tickets',
+                        'message' => $open . ' ticket(s) need attention',
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'link' => null,
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+        }
+
+        try {
+            if ($db->tableExists('audit_logs')) {
+                $builder = $db->table('audit_logs a')
+                    ->select('a.id, a.warehouse_id, a.action, a.entity_type, a.entity_id, a.created_at, u.name as actor_name, u.email as actor_email')
+                    ->join('users u', 'u.id = a.actor_user_id', 'left')
+                    ->orderBy('a.id', 'DESC')
+                    ->limit(5);
+
+                if ($warehouseId !== null && $db->fieldExists('warehouse_id', 'audit_logs')) {
+                    $builder->groupStart()->where('a.warehouse_id', $warehouseId)->orWhere('a.warehouse_id', null)->groupEnd();
+                }
+
+                $rows = $builder->get()->getResultArray();
+                foreach ($rows as $r) {
+                    $items[] = [
+                        'type' => 'info',
+                        'title' => 'Activity',
+                        'message' => $this->buildAuditSummary($r),
+                        'created_at' => $r['created_at'] ?? null,
+                        'link' => site_url('system-logs'),
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return $this->response->setJSON([
+            'count' => count($items),
+            'notifications' => $items,
+        ]);
     }
 
     public function warehouses()
@@ -543,10 +816,29 @@ class Admin extends Controller
             return $resp;
         }
 
+        $db = \Config\Database::connect();
+        if (! $db->fieldExists('is_active', 'users')) {
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'is_active field missing on users']);
+        }
+
         $model = new UserModel();
         $existing = $model->select('id, name, email, role, is_active')->find($id);
-        $model->delete($id);
-        $this->writeAuditLog('delete', 'user', $id, $existing, null);
+        if (! $existing) {
+            return $this->response->setStatusCode(404)->setJSON(['error' => 'User not found']);
+        }
+
+        $update = ['is_active' => 0];
+        if ($db->fieldExists('updated_by', 'users')) {
+            $update['updated_by'] = (int) $this->session->get('userID');
+        }
+
+        $ok = $model->update($id, $update);
+        if ($ok === false) {
+            return $this->response->setStatusCode(400)->setJSON(['error' => 'Update failed', 'details' => $model->errors()]);
+        }
+
+        $after = $model->select('id, name, email, role, is_active')->find($id);
+        $this->writeAuditLog('update', 'user_status', $id, $existing, $after);
         return $this->response->setJSON(['success' => true]);
     }
 
@@ -666,6 +958,18 @@ class Admin extends Controller
         $entityType = trim((string) ($this->request->getGet('entity_type') ?? ''));
         $action = trim((string) ($this->request->getGet('action') ?? ''));
         $all = (int) ($this->request->getGet('all') ?? 0);
+
+        if ($action === 'status') {
+            $action = 'update';
+            if ($entityType === '') {
+                $entityType = 'user_status';
+            }
+        } elseif ($action === 'reset_password') {
+            $action = 'update';
+            if ($entityType === '') {
+                $entityType = 'user_password';
+            }
+        }
 
         $builder = $db->table('audit_logs a')
             ->select('a.id, a.warehouse_id, a.actor_user_id, a.action, a.entity_type, a.entity_id, a.before_json, a.after_json, a.ip_address, a.user_agent, a.created_at, u.name as actor_name, u.email as actor_email')
@@ -1230,6 +1534,89 @@ class Admin extends Controller
         $db = \Config\Database::connect();
         if (! ($db->tableExists('roles') && $db->tableExists('permissions') && $db->tableExists('role_permissions'))) {
             return $this->response->setStatusCode(500)->setJSON(['error' => 'RBAC tables missing. Run migrations first.']);
+        }
+
+        $now = date('Y-m-d H:i:s');
+
+        $seedRoles = [
+            'itadministrator' => 'IT Administrator',
+            'manager' => 'Manager',
+            'staff' => 'Staff',
+            'viewer' => 'Viewer',
+            'topmanagement' => 'Top Management',
+            'inventoryauditor' => 'Inventory Auditor',
+            'procurementofficer' => 'Procurement Officer',
+            'accountspayable' => 'Accounts Payable',
+            'accountsreceivable' => 'Accounts Receivable',
+        ];
+
+        foreach ($seedRoles as $roleKey => $label) {
+            try {
+                $existing = $db->table('roles')->select('id')->where('role_key', $roleKey)->get()->getRowArray();
+                if (! $existing) {
+                    $db->table('roles')->insert([
+                        'role_key' => $roleKey,
+                        'label' => $label,
+                        'created_at' => $now,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        // Seed Top Management defaults only if role exists and has no configured permissions yet.
+        // (Avoid overwriting any custom permission setup.)
+        $seedRolePerms = [
+            'topmanagement' => [
+                'top.dashboard.view',
+                'inventory.view',
+                'transfers.view',
+                'transfers.approve',
+                'po.view',
+                'po.approve',
+                'finance.view',
+                'reports.view',
+                'logs.view',
+                'ticket.view_all',
+            ],
+        ];
+
+        foreach ($seedRolePerms as $roleKey => $codes) {
+            try {
+                $roleRow = $db->table('roles')->select('id')->where('role_key', $roleKey)->get()->getRowArray();
+                if (! $roleRow || empty($roleRow['id'])) {
+                    continue;
+                }
+                $roleId = (int) $roleRow['id'];
+
+                $existingRp = $db->table('role_permissions')->select('role_id')->where('role_id', $roleId)->limit(1)->get()->getRowArray();
+                if ($existingRp) {
+                    continue;
+                }
+
+                foreach ($codes as $code) {
+                    $permRow = $db->table('permissions')->select('id')->where('code', $code)->get()->getRowArray();
+                    if (! $permRow) {
+                        $db->table('permissions')->insert([
+                            'code' => $code,
+                            'description' => null,
+                            'created_at' => $now,
+                        ]);
+                    }
+                }
+
+                foreach ($codes as $code) {
+                    $permRow = $db->table('permissions')->select('id')->where('code', $code)->get()->getRowArray();
+                    if ($permRow && ! empty($permRow['id'])) {
+                        $db->table('role_permissions')->insert([
+                            'role_id' => $roleId,
+                            'permission_id' => (int) $permRow['id'],
+                            'created_at' => $now,
+                        ]);
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
         }
 
         $roles = $db->table('roles')->select('id, role_key, label')->orderBy('role_key', 'ASC')->get()->getResultArray();

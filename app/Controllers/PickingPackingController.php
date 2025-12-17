@@ -45,18 +45,30 @@ class PickingPackingController extends Controller
 
         // Get approved outbound receipts that haven't been picked yet
         $tasks = $this->db->table('outbound_receipts or')
-            ->select('or.*, ori.id as item_id, ori.item_id as inventory_item_id, ori.quantity as required_quantity, 
+            ->select('or.id as receipt_id, or.reference_no, or.customer_name, or.status as receipt_status,
+                     ori.id as item_id, ori.item_id as inventory_item_id, ori.quantity as required_quantity, 
                      i.name as item_name, i.sku as item_sku, i.location as storage_location, i.quantity as available_stock,
-                     COALESCE(pp.status, "Pending") as picking_status, pp.id as picking_id, pp.picked_quantity')
-            ->join('outbound_receipt_items ori', 'ori.receipt_id = or.id', 'left')
-            ->join('inventory i', 'i.id = ori.item_id', 'left')
-            ->join('picking_packing_tasks pp', 'pp.receipt_id = or.id AND pp.item_id = ori.item_id AND pp.task_type = "PICKING"', 'left')
+                     pp.status as picking_status, pp.id as picking_id, pp.picked_quantity')
+            ->join('outbound_receipt_items ori', 'ori.receipt_id = or.id', 'inner')
+            ->join('inventory i', 'i.id = ori.item_id', 'inner')
+            ->join('picking_packing_tasks pp', 'pp.receipt_id = or.id AND pp.item_id = i.id AND pp.task_type = "PICKING"', 'left')
             ->where('or.status', 'Approved')
             ->where('or.warehouse_id', $warehouseId)
-            ->whereIn('COALESCE(pp.status, "Pending")', ['Pending', 'In Progress'])
+            ->groupStart()
+                ->where('pp.status', 'Pending')
+                ->orWhere('pp.status', 'In Progress')
+                ->orWhere('pp.status', NULL)
+            ->groupEnd()
             ->orderBy('or.created_at', 'ASC')
             ->get()
             ->getResultArray();
+
+        // Set default status if null
+        foreach ($tasks as &$task) {
+            if (empty($task['picking_status'])) {
+                $task['picking_status'] = 'Pending';
+            }
+        }
 
         return $this->response->setJSON(['tasks' => $tasks]);
     }
@@ -120,46 +132,49 @@ class PickingPackingController extends Controller
             return $this->response->setJSON(['error' => 'Unauthorized'])->setStatusCode(401);
         }
 
-        $taskId = $this->request->getPost('task_id');
-        $receiptId = $this->request->getPost('receipt_id');
-        $itemId = $this->request->getPost('item_id');
-        $pickedQuantity = (int)$this->request->getPost('picked_quantity');
-        $staffId = session()->get('userID');
-        $warehouseId = session()->get('warehouse_id');
+        try {
+            $taskId = $this->request->getPost('task_id');
+            $receiptId = $this->request->getPost('receipt_id');
+            $itemId = $this->request->getPost('item_id');
+            $pickedQuantity = (int)$this->request->getPost('picked_quantity');
+            $staffId = session()->get('userID');
+            $warehouseId = session()->get('warehouse_id');
 
-        if ($pickedQuantity <= 0) {
-            return $this->response->setJSON(['error' => 'Invalid quantity'])->setStatusCode(400);
-        }
+            log_message('debug', "Complete Picking: taskId={$taskId}, receiptId={$receiptId}, itemId={$itemId}, qty={$pickedQuantity}");
 
-        // Get or create task
-        if ($taskId) {
-            $task = $this->db->table('picking_packing_tasks')->where('id', $taskId)->get()->getRowArray();
-        } else {
-            // Create task first
-            $this->db->table('picking_packing_tasks')->insert([
-                'receipt_id' => $receiptId,
-                'item_id' => $itemId,
-                'task_type' => 'PICKING',
-                'status' => 'In Progress',
-                'assigned_to' => $staffId,
-                'started_at' => date('Y-m-d H:i:s'),
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s')
-            ]);
-            $taskId = $this->db->insertID();
-            $task = $this->db->table('picking_packing_tasks')->where('id', $taskId)->get()->getRowArray();
-        }
+            if ($pickedQuantity <= 0) {
+                return $this->response->setJSON(['error' => 'Invalid quantity'])->setStatusCode(400);
+            }
 
-        if (!$task) {
-            return $this->response->setJSON(['error' => 'Task not found'])->setStatusCode(404);
-        }
+            // Get or create task
+            if ($taskId) {
+                $task = $this->db->table('picking_packing_tasks')->where('id', $taskId)->get()->getRowArray();
+            } else {
+                // Create task first
+                $this->db->table('picking_packing_tasks')->insert([
+                    'receipt_id' => $receiptId,
+                    'item_id' => $itemId,
+                    'task_type' => 'PICKING',
+                    'status' => 'In Progress',
+                    'assigned_to' => $staffId,
+                    'started_at' => date('Y-m-d H:i:s'),
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+                $taskId = $this->db->insertID();
+                $task = $this->db->table('picking_packing_tasks')->where('id', $taskId)->get()->getRowArray();
+            }
+
+            if (!$task) {
+                return $this->response->setJSON(['error' => 'Task not found'])->setStatusCode(404);
+            }
 
         // Get required quantity and reference number
         $receiptItem = $this->db->table('outbound_receipt_items ori')
-            ->select('ori.*, or.reference_no')
+            ->select('ori.*, or.reference_no, or.customer_name')
             ->join('outbound_receipts or', 'or.id = ori.receipt_id')
-            ->where('ori.receipt_id', $task['receipt_id'])
-            ->where('ori.item_id', $task['item_id'])
+            ->where('ori.receipt_id', $receiptId)
+            ->where('ori.item_id', $itemId)
             ->get()
             ->getRowArray();
 
@@ -174,7 +189,7 @@ class PickingPackingController extends Controller
 
         // Check available stock
         $inventory = $this->db->table('inventory')
-            ->where('id', $task['item_id'])
+            ->where('id', $itemId)
             ->get()
             ->getRowArray();
 
@@ -184,69 +199,77 @@ class PickingPackingController extends Controller
 
         $this->db->transStart();
 
-        try {
-            // Update picking task
-            $this->db->table('picking_packing_tasks')
-                ->where('id', $taskId)
-                ->update([
-                    'picked_quantity' => $pickedQuantity,
-                    'status' => 'Picked',
-                    'completed_by' => $staffId,
-                    'completed_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]);
-
-            // Deduct stock (reserve for packing)
-            $this->db->table('inventory')
-                ->where('id', $task['item_id'])
-                ->set('quantity', "quantity - {$pickedQuantity}", false)
-                ->update();
-
-            // Create stock movement record
-            $this->db->table('stock_movements')->insert([
-                'warehouse_id' => $warehouseId,
-                'item_id' => $task['item_id'],
-                'quantity' => $pickedQuantity,
-                'movement_type' => 'OUTBOUND',
-                'reason' => 'Order Picking - ' . $receiptItem['reference_no'],
-                'reference_no' => $receiptItem['reference_no'],
-                'created_by' => $staffId,
-                'created_at' => date('Y-m-d H:i:s'),
+        // Update picking task
+        log_message('debug', "Updating picking task ID: {$taskId}");
+        $this->db->table('picking_packing_tasks')
+            ->where('id', $taskId)
+            ->update([
+                'picked_quantity' => $pickedQuantity,
+                'status' => 'Picked',
+                'completed_by' => $staffId,
+                'completed_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
 
-            // Auto-generate packing task
-            $packingExists = $this->db->table('picking_packing_tasks')
-                ->where('receipt_id', $task['receipt_id'])
-                ->where('item_id', $task['item_id'])
-                ->where('task_type', 'PACKING')
-                ->get()
-                ->getRowArray();
+        // Deduct stock (reserve for packing)
+        log_message('debug', "Deducting stock for item ID: {$itemId}, quantity: {$pickedQuantity}");
+        $this->db->table('inventory')
+            ->where('id', $itemId)
+            ->set('quantity', "quantity - {$pickedQuantity}", false)
+            ->update();
 
-            if (!$packingExists) {
-                $this->db->table('picking_packing_tasks')->insert([
-                    'receipt_id' => $task['receipt_id'],
-                    'item_id' => $task['item_id'],
-                    'task_type' => 'PACKING',
-                    'status' => 'Pending',
-                    'picked_quantity' => $pickedQuantity,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]);
-            }
+        // Create stock movement record (matching actual table structure)
+        log_message('debug', "Creating stock movement for item ID: {$itemId}");
+        $this->db->table('stock_movements')->insert([
+            'transaction_number' => $receiptItem['reference_no'],
+            'items_in_progress' => 0,
+            'order_number' => $receiptItem['reference_no'],
+            'id' => $itemId,
+            'quantity' => $pickedQuantity,
+            'company_name' => $receiptItem['customer_name'] ?? 'Customer',
+            'movement_type' => 'out',
+            'location' => $inventory['location'] ?? 'N/A',
+            'status' => 'completed'
+        ]);
 
-            $this->db->transComplete();
+        // Auto-generate packing task
+        log_message('debug', "Checking for existing packing task");
+        $packingExists = $this->db->table('picking_packing_tasks')
+            ->where('receipt_id', $receiptId)
+            ->where('item_id', $itemId)
+            ->where('task_type', 'PACKING')
+            ->get()
+            ->getRowArray();
 
-            if ($this->db->transStatus() === false) {
-                return $this->response->setJSON(['error' => 'Transaction failed'])->setStatusCode(500);
-            }
+        if (!$packingExists) {
+            log_message('debug', "Creating packing task");
+            $this->db->table('picking_packing_tasks')->insert([
+                'receipt_id' => $receiptId,
+                'item_id' => $itemId,
+                'task_type' => 'PACKING',
+                'status' => 'Pending',
+                'picked_quantity' => $pickedQuantity,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+        }
 
-            return $this->response->setJSON(['success' => true, 'message' => 'Picking completed successfully. Packing task created.']);
+        $this->db->transComplete();
+
+        if ($this->db->transStatus() === false) {
+            $error = $this->db->error();
+            log_message('error', 'Transaction failed in completePicking: ' . print_r($error, true));
+            return $this->response->setJSON(['error' => 'Transaction failed: ' . ($error['message'] ?? 'Unknown error')])->setStatusCode(500);
+        }
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Picking completed successfully. Packing task created.']);
 
         } catch (\Exception $e) {
-            $this->db->transRollback();
-            log_message('error', 'Picking completion failed: ' . $e->getMessage());
-            return $this->response->setJSON(['error' => 'Failed to complete picking'])->setStatusCode(500);
+            if ($this->db->transStatus() !== false) {
+                $this->db->transRollback();
+            }
+            log_message('error', 'Picking completion failed: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return $this->response->setJSON(['error' => 'Failed to complete picking: ' . $e->getMessage()])->setStatusCode(500);
         }
     }
 

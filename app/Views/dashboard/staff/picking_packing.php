@@ -165,17 +165,20 @@
                 const response = await fetch('<?= site_url('api/picking/tasks') ?>');
                 const data = await response.json();
                 
+                console.log('Picking tasks loaded:', data);
+                
                 if (data.tasks && data.tasks.length > 0) {
                     let html = '<div class="table-responsive"><table class="table table-hover"><thead><tr>' +
                         '<th>Order Ref</th><th>Item</th><th>SKU</th><th>Location</th>' +
                         '<th class="text-end">Required</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
                     
                     data.tasks.forEach(task => {
+                        console.log('Task status:', task.picking_status, 'for', task.item_name);
                         const statusBadge = getStatusBadge(task.picking_status || 'Pending');
                         const actionBtn = task.picking_status === 'Picked' ? 
                             '<span class="text-success">✓ Completed</span>' :
                             task.picking_status === 'In Progress' ?
-                            `<button class="btn btn-sm btn-warning" onclick='openPickingModal(${JSON.stringify(task).replace(/'/g, "\\'")})''>Continue</button>` :
+                            `<button class="btn btn-sm btn-success" onclick='openPickingModal(${JSON.stringify(task).replace(/'/g, "\\'")})''>Finish Picking</button>` :
                             `<button class="btn btn-sm btn-primary" onclick="startPicking(${task.receipt_id}, ${task.inventory_item_id})">Start Picking</button>`;
                         
                         html += `<tr>
@@ -253,7 +256,7 @@
             const badges = {
                 'Pending': '<span class="badge bg-secondary">Pending</span>',
                 'In Progress': '<span class="badge bg-warning text-dark">In Progress</span>',
-                'Picked': '<span class="badge bg-success">Picked</span>',
+                'Picked': '<span class="badge bg-info">Ready for Packing</span>',
                 'Packed': '<span class="badge bg-success">Packed</span>'
             };
             return badges[status] || badges['Pending'];
@@ -261,6 +264,10 @@
 
         // Start picking
         async function startPicking(receiptId, itemId) {
+            if (!confirm('Start picking this item?')) {
+                return;
+            }
+            
             try {
                 const formData = new FormData();
                 formData.append('receipt_id', receiptId);
@@ -272,10 +279,14 @@
                 });
                 
                 const data = await response.json();
+                console.log('Start picking response:', data);
                 
                 if (data.success) {
-                    alert('Picking task started successfully');
-                    loadPickingTasks();
+                    // Wait a moment for database to update
+                    setTimeout(async () => {
+                        await loadPickingTasks();
+                        alert('Picking started! Now click "Finish Picking" to complete.');
+                    }, 500);
                 } else {
                     alert('Error: ' + (data.error || 'Failed to start picking'));
                 }

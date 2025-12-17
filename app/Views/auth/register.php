@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="<?= base_url('public/assets/theme.css') ?>" rel="stylesheet">
+    <script src="<?= base_url('public/assets/theme.js') ?>" defer></script>
     <style>
         * {
             margin: 0;
@@ -17,7 +19,7 @@
 
         body {
             height: 100vh;
-            background: url('<?= base_url('public/assets/bg.png') ?>') no-repeat center center;
+            background: url('<?= base_url('public/assets/bg.png') ?>') no-repeat center center !important;
             background-size: cover;
             display: flex;
             align-items: center;

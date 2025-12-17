@@ -9,6 +9,8 @@
     <link href="<?= base_url('css/site.css') ?>" rel="stylesheet">
     <link href="<?= base_url('css/manager.css') ?>" rel="stylesheet">
     <link href="<?= base_url('css/staff.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('public/assets/theme.css') ?>" rel="stylesheet">
+    <script src="<?= base_url('public/assets/theme.js') ?>" defer></script>
     <style>
         /* Ensure main content leaves room for the fixed sidebar (layout only) */
         body { font-family: 'Times New Roman', serif; background: #fff; }

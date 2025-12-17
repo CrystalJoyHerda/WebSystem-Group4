@@ -15,6 +15,11 @@ class CreateExpensesTable extends Migration
                 'unsigned'       => true,
                 'auto_increment' => true,
             ],
+            'vendor_id' => [
+                'type'       => 'INT',
+                'constraint' => 11,
+                'unsigned'   => true,
+            ],
             'expense_category' => [
                 'type'       => 'VARCHAR',
                 'constraint' => 100,
@@ -34,6 +39,12 @@ class CreateExpensesTable extends Migration
             'percent_budget' => [
                 'type'       => 'DECIMAL',
                 'constraint' => '5,2',
+            ],
+            'vendor_id' => [
+                'type'       => 'INT',
+                'constraint' => 11,
+                'unsigned'   => true,
+                'null'       => true,
             ],
             'amount' => [
                 'type'       => 'DECIMAL',

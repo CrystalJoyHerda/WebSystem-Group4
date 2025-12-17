@@ -13,14 +13,27 @@ class InboundReceiptModel extends Model
     ];
     protected $useTimestamps = true;
 
+    private function applyWarehouseScope($builder, ?int $warehouseId, ?array $allowedWarehouseIds)
+    {
+        if ($warehouseId !== null && $warehouseId > 0) {
+            $builder->where('warehouse_id', $warehouseId);
+            return;
+        }
+
+        if ($allowedWarehouseIds !== null && $allowedWarehouseIds !== []) {
+            $builder->whereIn('warehouse_id', $allowedWarehouseIds);
+        }
+    }
+
     /**
      * Get pending inbound receipts (not approved yet)
      */
-    public function getPendingReceipts()
+    public function getPendingReceipts(?int $warehouseId = null, ?array $allowedWarehouseIds = null)
     {
-        return $this->where('status', 'Pending')
-                    ->orderBy('created_at', 'DESC')
-                    ->findAll();
+        $builder = $this->builder();
+        $builder->where('status', 'Pending')->orderBy('created_at', 'DESC');
+        $this->applyWarehouseScope($builder, $warehouseId, $allowedWarehouseIds);
+        return $builder->get()->getResultArray();
     }
 
     /**

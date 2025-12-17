@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Inventory</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="<?= base_url('css/site.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('css/inventory.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/theme.css') ?>" rel="stylesheet">
+    <script src="<?= base_url('assets/theme.js') ?>" defer></script>
     <style>
         body{font-family:'Times New Roman',serif;background:#fff}
         .app-shell{display:flex;min-height:100vh}

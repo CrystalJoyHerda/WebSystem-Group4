@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock Movements</title>
     <link rel="stylesheet" href="<?= base_url('css/bootstrap.min.css') ?>">
+    <link href="<?= base_url('public/assets/theme.css') ?>" rel="stylesheet">
+    <script src="<?= base_url('public/assets/theme.js') ?>" defer></script>
 </head>
 <body>
     <nav>
@@ -14,6 +16,6 @@
             <li><a href="<?= site_url('')?>"></a></li>
         </ul>
     </nav>
-    <script src="<?= base_url('js/bootstrap.bundle.min.j')?>"></script>
+    <script src="<?= base_url('js/bootstrap.bundle.min.js')?>"></script>
 </body>
 </html>

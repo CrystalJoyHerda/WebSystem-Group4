@@ -10,6 +10,31 @@ class InventoryModel extends Model
     protected $allowedFields = ['name','sku','category','location','quantity','status','expiry','warehouse_id','version','created_at','updated_at'];
     protected $useTimestamps = false;
 
+    public function getLowStockThreshold(): int
+    {
+        $db = \Config\Database::connect();
+        if (! $db->tableExists('system_settings')) {
+            return 10;
+        }
+
+        $row = $db->table('system_settings')
+            ->select('setting_value')
+            ->where('setting_key', 'inventory.low_stock_threshold')
+            ->get()
+            ->getRowArray();
+
+        if (! $row || ! isset($row['setting_value']) || $row['setting_value'] === null || $row['setting_value'] === '') {
+            return 10;
+        }
+
+        if (! is_numeric($row['setting_value'])) {
+            return 10;
+        }
+
+        $v = (int) $row['setting_value'];
+        return $v >= 0 ? $v : 10;
+    }
+
     /**
      * Find item by SKU and warehouse (for barcode scanning)
      */
@@ -51,9 +76,10 @@ class InventoryModel extends Model
     /**
      * Get low stock items (quantity <= 10)
      */
-    public function getLowStockItems($warehouseId = null)
+    public function getLowStockItems($warehouseId = null, ?int $threshold = null)
     {
-        $builder = $this->where('quantity <=', 10);
+        $threshold = $threshold ?? $this->getLowStockThreshold();
+        $builder = $this->where('quantity <=', $threshold);
         
         if ($warehouseId !== null) {
             $builder->where('warehouse_id', $warehouseId);
@@ -65,13 +91,14 @@ class InventoryModel extends Model
     /**
      * Get stock summary by warehouse
      */
-    public function getStockSummaryByWarehouse()
+    public function getStockSummaryByWarehouse(?int $threshold = null)
     {
+        $threshold = $threshold ?? $this->getLowStockThreshold();
         $builder = $this->db->table('inventory i')
             ->select('i.warehouse_id, w.name as warehouse_name, 
                      COUNT(i.id) as total_items, 
                      SUM(i.quantity) as total_quantity,
-                     SUM(CASE WHEN i.quantity <= 10 THEN 1 ELSE 0 END) as low_stock_count')
+                     SUM(CASE WHEN i.quantity <= ' . (int) $threshold . ' THEN 1 ELSE 0 END) as low_stock_count')
             ->join('warehouses w', 'w.id = i.warehouse_id', 'left')
             ->groupBy('i.warehouse_id, w.name')
             ->orderBy('w.name', 'ASC');
@@ -82,8 +109,9 @@ class InventoryModel extends Model
     /**
      * Update stock quantity (for transfers and stock movements)
      */
-    public function updateStock($itemId, $newQuantity, $warehouseId = null)
+    public function updateStock($itemId, $newQuantity, $warehouseId = null, ?int $threshold = null)
     {
+        $threshold = $threshold ?? $this->getLowStockThreshold();
         $data = ['quantity' => $newQuantity];
         
         if ($warehouseId !== null) {
@@ -93,7 +121,7 @@ class InventoryModel extends Model
         // Determine status based on quantity
         if ($newQuantity <= 0) {
             $data['status'] = 'out';
-        } elseif ($newQuantity <= 10) {
+        } elseif ($newQuantity <= $threshold) {
             $data['status'] = 'low';
         } else {
             $data['status'] = 'in';

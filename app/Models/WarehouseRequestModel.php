@@ -75,7 +75,7 @@ class WarehouseRequestModel extends Model
                     ->join('warehouses w1', 'w1.id = warehouse_requests.requesting_warehouse_id', 'left')
                     ->join('warehouses w2', 'w2.id = warehouse_requests.supplying_warehouse_id', 'left')
                     ->whereIn('warehouse_requests.status', ['SCANNED', 'DELIVERING'])
-                    ->where('warehouse_requests.supplying_warehouse_id', $warehouseId')
+                    ->where('warehouse_requests.supplying_warehouse_id', $warehouseId)
                     ->orderBy('warehouse_requests.created_at', 'DESC')
                     ->findAll();
     }
@@ -134,6 +134,7 @@ class WarehouseRequestModel extends Model
                 ]);
             }
 
+
             $db->transComplete();
 
             if ($db->transStatus() === false) {
@@ -189,3 +190,4 @@ class WarehouseRequestModel extends Model
         return $this->update($requestId, ['inbound_receipt_id' => $receiptId]);
     }
 }
+    

@@ -31,8 +31,10 @@ $routes->match(['get', 'post'], 'register', 'Auth::register');
 // Generic dashboard route — redirects to manager or staff dashboard based on session
 $routes->get('dashboard', 'Dashboard::index');
 $routes->get('dashboard/manager', 'Dashboard::manager');
+$routes->get('dashboard/manager/warehouse/(:num)', 'Dashboard::warehouseInventory/$1');
 $routes->get('dashboard/staff', 'Dashboard::staff');
 $routes->get('dashboard/viewer', 'Dashboard::viewer');
+$routes->get('dashboard/admin', 'Dashboard::admin');
 // Warehouse 2 dashboards
 $routes->get('dashboard/warehouse2/manager', 'Warehouse2Dashboard::manager');
 $routes->get('dashboard/warehouse2/staff', 'Warehouse2Dashboard::staff');
@@ -153,6 +155,14 @@ $routes->post('api/warehouse-requests/approve/(:num)', 'WarehouseRequestControll
 $routes->get('api/warehouse-requests/deliveries', 'WarehouseRequestController::getDeliveries');
 $routes->post('api/warehouse-requests/mark-delivered/(:num)', 'WarehouseRequestController::markDelivered/$1');
 $routes->get('dashboard/staff/deliveries', 'WarehouseRequestController::deliveryPage');
+
+// Picking and Packing Routes
+$routes->get('dashboard/staff/picking-packing', 'PickingPackingController::index');
+$routes->get('api/picking/tasks', 'PickingPackingController::getPickingTasks');
+$routes->post('api/picking/start', 'PickingPackingController::startPicking');
+$routes->post('api/picking/complete', 'PickingPackingController::completePicking');
+$routes->get('api/packing/tasks', 'PickingPackingController::getPackingTasks');
+$routes->post('api/packing/complete', 'PickingPackingController::completePacking');
 
 /*
  * --------------------------------------------------------------------

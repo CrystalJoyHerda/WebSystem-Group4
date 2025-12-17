@@ -161,10 +161,14 @@ class Auth extends Controller
 
                     session()->setFlashdata('success', value: 'Welcome back, ' . $user['name'] . '!');
                     // Redirect based on role
-                    if ($user['role'] === 'manager') {
+                    if ($user['role'] === 'admin') {
+                        return redirect()->to(base_url('dashboard/admin'));
+                    } elseif ($user['role'] === 'manager') {
                         return redirect()->to(base_url('dashboard/manager'));
                     } elseif ($user['role'] === 'staff') {
                         return redirect()->to(base_url('dashboard/staff'));
+                    } elseif ($user['role'] === 'viewer') {
+                        return redirect()->to(base_url('dashboard/viewer'));
                     }
 
                     return redirect()->to(base_url('dashboard'));

@@ -32,7 +32,7 @@
                 <div class="brand">WeBuild</div>
             </div>
 
-            <div class="page-title">Warehouse DASHBOARD</div>
+            <div class="page-title">Staff DASHBOARD</div>
 
             <div class="container-fluid mt-3">
                 <div class="row g-4">
@@ -106,3 +106,4 @@
     <script src="<?= base_url('js/site.js') ?>"></script>
 </body>
 </html>
+

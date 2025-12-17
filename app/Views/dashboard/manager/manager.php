@@ -33,101 +33,40 @@
                 <div class="brand">WeBuild</div>
             </div>
 
-            <div class="page-title">Warehouse DASHBOARD</div>
+            <div class="page-title">Manager DASHBOARD</div>
 
             <div class="row mb-4 warehouses">
-                <div class="col card-warehouse">
-                    <h5>Warehouse A</h5>
-                    <div class="d-flex justify-content-between"><small>Capacity</small><small>75.0%</small></div>
-                    <div class="progress my-2" style="height:10px"><div class="progress-bar" role="progressbar" style="width:75%"></div></div>
-                    <div class="d-flex gap-3 mt-3">
-                        <div style="background:#f1f1f1;padding:10px;border-radius:8px;min-width:90px">Items<br><strong>2,340</strong></div>
-                        <div style="background:#f1f1f1;padding:10px;border-radius:8px;min-width:90px">Staff<br><strong>12</strong></div>
-                    </div>
-                    <div class="mt-3"><small class="text-success">Inbound shipment completed 2h ago</small></div>
+                <?php 
+                $warehouseColors = ['', 'bg-dark', 'bg-dark']; // First one default blue, others dark
+                foreach ($warehouses ?? [] as $index => $warehouse): 
+                    $capacityPercent = number_format($warehouse['capacity_percent'], 1);
+                    $progressColor = $warehouseColors[$index] ?? 'bg-dark';
+                ?>
+                <div class="col">
+                    <a href="<?= site_url('dashboard/manager/warehouse/' . $warehouse['id']) ?>" style="text-decoration: none; color: inherit;">
+                        <div class="card-warehouse" style="cursor: pointer; transition: all 0.3s;" onmouseover="this.style.boxShadow='0 4px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
+                            <h5><?= esc($warehouse['name']) ?></h5>
+                            <div class="d-flex justify-content-between"><small>Capacity</small><small><?= $capacityPercent ?>%</small></div>
+                            <div class="progress my-2" style="height:10px">
+                                <div class="progress-bar <?= $progressColor ?>" role="progressbar" style="width:<?= $capacityPercent ?>%"></div>
+                            </div>
+                            <div class="d-flex gap-3 mt-3">
+                                <div style="background:#f1f1f1;padding:10px;border-radius:8px;min-width:90px">Items<br><strong><?= number_format($warehouse['item_count']) ?></strong></div>
+                                <div style="background:#f1f1f1;padding:10px;border-radius:8px;min-width:90px">Staff<br><strong><?= $warehouse['staff_count'] ?></strong></div>
+                            </div>
+                            <div class="mt-3"><small class="<?= $warehouse['status_class'] ?>"><?= esc($warehouse['status_message']) ?></small></div>
+                        </div>
+                    </a>
                 </div>
-
-                <div class="col card-warehouse">
-                    <h5>Warehouse B</h5>
-                    <div class="d-flex justify-content-between"><small>Capacity</small><small>87.70%</small></div>
-                    <div class="progress my-2" style="height:10px"><div class="progress-bar bg-dark" role="progressbar" style="width:87.7%"></div></div>
-                    <div class="d-flex gap-3 mt-3">
-                        <div style="background:#f1f1f1;padding:10px;border-radius:8px;min-width:90px">Items<br><strong>1,890</strong></div>
-                        <div style="background:#f1f1f1;padding:10px;border-radius:8px;min-width:90px">Staff<br><strong>8</strong></div>
-                    </div>
-                    <div class="mt-3"><small class="text-info">Stock transfer in progress</small></div>
-                </div>
-
-                <div class="col card-warehouse">
-                    <h5>Warehouse C</h5>
-                    <div class="d-flex justify-content-between"><small>Capacity</small><small>95.8%</small></div>
-                    <div class="progress my-2" style="height:10px"><div class="progress-bar bg-dark" role="progressbar" style="width:95.8%"></div></div>
-                    <div class="d-flex gap-3 mt-3">
-                        <div style="background:#f1f1f1;padding:10px;border-radius:8px;min-width:90px">Items<br><strong>3,120</strong></div>
-                        <div style="background:#f1f1f1;padding:10px;border-radius:8px;min-width:90px">Staff<br><strong>15</strong></div>
-                    </div>
-                    <div class="mt-3"><small class="text-info">Stock transfer in progress</small></div>
-                </div>
+                <?php endforeach; ?>
             </div>
 
             <div class="row g-4">
-                <?php
-// ensure $items is set — if controller didn't provide it, load from the Inventory model
-if (empty($items) || ! is_array($items)) {
-    try {
-        $inventoryModel = new \App\Models\InventoryModel();
-        $items = $inventoryModel->findAll();
-    } catch (\Throwable $e) {
-        $items = [];
-    }
-}
-
-// compute alert count robustly
-$alertCount = 0;
-foreach ($items as $it) {
-    // normalize status
-    $statusRaw = '';
-    if (! empty($it['status'])) {
-        $statusRaw = $it['status'];
-    } elseif (! empty($it['stock_status'])) {
-        $statusRaw = $it['stock_status'];
-    }
-    $status = strtolower((string) $statusRaw);
-
-    if ($status !== '' && (strpos($status, 'low') !== false || strpos($status, 'out') !== false)) {
-        $alertCount++;
-        continue;
-    }
-
-    // fallback: numeric checks (quantity vs min/reorder level)
-    $qty = isset($it['quantity']) ? (int) $it['quantity'] : null;
-    if ($qty !== null) {
-        $minLevel = null;
-        if (isset($it['min_level'])) {
-            $minLevel = (int) $it['min_level'];
-        } elseif (isset($it['reorder_level'])) {
-            $minLevel = (int) $it['reorder_level'];
-        }
-
-        if ($minLevel !== null) {
-            if ($qty <= $minLevel) {
-                $alertCount++;
-                continue;
-            }
-        } else {
-            if ($qty <= 0) {
-                $alertCount++;
-                continue;
-            }
-        }
-    }
-}
-?>
                 <div class="col-md-4">
                     <a class="stat-link" href="<?= site_url('dashboard/manager/stockmovement') ?>">
                         <div class="stat-card" role="button" aria-label="View pending approvals">
                             <h6>Pending Approvals</h6>
-                            <h3 id="pendingApprovals">5</h3>
+                            <h3 id="pendingApprovals"><?= $pendingApprovals ?? 0 ?></h3>
                         </div>
                     </a>
                 </div>
@@ -135,7 +74,7 @@ foreach ($items as $it) {
                     <a class="stat-link" href="<?= site_url('inventory') ?>?filter=alert">
                         <div class="stat-card" role="button" aria-label="View alert stocks">
                             <h6>Alert Stocks</h6>
-                            <h3 id="alertStocks"><?= intval($alertCount) ?></h3>
+                            <h3 id="alertStocks"><?= $alertCount ?? 0 ?></h3>
                         </div>
                     </a>
                 </div>
